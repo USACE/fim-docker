@@ -1,0 +1,4 @@
+ARG platform=linux/amd64 
+FROM --platform=${platform} 038611608639.dkr.ecr.us-east-1.amazonaws.com/cwbi-inundation-api:release
+
+RUN microdnf update -y

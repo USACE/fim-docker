@@ -1,0 +1,11 @@
+ARG platform=linux/amd64 
+FROM --platform=${platform} 038611608639.dkr.ecr.us-east-1.amazonaws.com/esd-download-api:release
+
+RUN mkdir -p /tmp && \
+ echo "**** install runtime packages ****" && \
+ apt-get update
+
+ RUN echo "**** clean up ****" && \
+  apt-get autoremove -y ; \
+  apt-get clean ; \
+  rm -rf /var/lib/apt/lists/partial/* /tmp/* /var/tmp/*

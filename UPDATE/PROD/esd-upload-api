@@ -1,0 +1,8 @@
+ARG platform=linux/amd64 
+FROM --platform=${platform} 648157167324.dkr.ecr.us-gov-west-1.amazonaws.com/esd-upload-api:prod
+
+
+RUN mkdir -p /tmp && \
+ echo "**** install runtime packages ****" && \
+ microdnf update -y
+
