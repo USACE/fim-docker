@@ -1,2 +1,6 @@
 .devcontainer
 .DS_Store
+
+UBUNTU/GDAL-OCI-MAPSERVER/mapfiles/*
+
+!UBUNTU/GDAL-OCI-MAPSERVER/mapfiles/.gitkeep
