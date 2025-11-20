@@ -63,7 +63,6 @@ RUN dnf config-manager --set-enabled ubi-9-codeready-builder-rpms && \
     libxml2-devel \
     expat-devel \
     python3-devel \
-    python3-numpy \
     python3-setuptools \
     pcre-devel \
     pcre2-devel \

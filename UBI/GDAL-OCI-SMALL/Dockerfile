@@ -19,7 +19,7 @@ ENV \
     NETCDF_VERSION=4.9.2 \
     OPENJPEG_VERSION=2.3.1 \
     ORACLE_VERSION=21.15.0.0.0 \
-    POSTGRESQL_VERSION=16.4 \    
+    POSTGRESQL_VERSION=17.4 \    
     PROJ_VERSION=master \
     SFCGAL_VERSION=1.5.0 \
     SPDLOG_VERSION=1.14.1 \    
@@ -54,7 +54,6 @@ RUN dnf config-manager --set-enabled ubi-9-codeready-builder-rpms && \
     expat-devel \
     postgresql-devel \
     python3-devel \
-    python3-numpy \
     python3-setuptools \
     cmake
 
@@ -63,6 +62,10 @@ RUN mkdir -p /buildtmp /build_thirdparty/usr/lib64
 # switch to a build directory
 WORKDIR /buildtmp
 
+RUN pip3 install --upgrade --force-reinstall pip
+RUN pip3 install --upgrade --force-reinstall wheel virtualenv 
+
+RUN pip3 install --upgrade --force-reinstall numpy rtree geopandas rasterio rio-cogeo
 # Install SWIG no idea why this doesn't show in the repo but it doesn't
 RUN curl -o swig.rpm https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/codeready-builder/os/Packages/s/swig-4.1.1-1.module+el9.2.0+17621+ec36a39e.x86_64.rpm -SL \
     && dnf install -y swig.rpm
@@ -232,7 +235,7 @@ RUN if [ "${HDF4_VERSION}" != "" ] && [ "$(uname -m)" = "x86_64" ]; then \
 
 # Final image
 ARG platform=linux/amd64 
-FROM --platform=${platform} registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.4 AS runner
+FROM --platform=${platform} registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.5 AS runner
 
 # Paths to things
 ENV \

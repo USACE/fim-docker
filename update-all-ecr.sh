@@ -25,9 +25,9 @@ for directory in "${directories[@]}"; do
           echo "$xfilename"
           # echo 038611608639.dkr.ecr.us-east-1.amazonaws.com/$xfilename:release
           echo $repo/$xfilename:prod
-          docker build -t $xfilename -f $file --no-cache .
-          docker tag $xfilename $repo/$xfilename:prod
-          docker push $repo/$xfilename:prod
+          # docker build -t $xfilename -f $file --no-cache .
+          # docker tag $xfilename $repo/$xfilename:prod
+          # docker push $repo/$xfilename:prod
       else
           echo "$file"
           echo "$xfilename"

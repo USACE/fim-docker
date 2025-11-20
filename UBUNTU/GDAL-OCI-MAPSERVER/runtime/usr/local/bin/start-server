@@ -1,5 +1,12 @@
 #!/bin/bash -e
 
+# ---------------------------------------------------------
+# Print all environment variables, one per line
+# ---------------------------------------------------------
+# echo "===== Environment Variables ====="
+# env | sort
+# echo "=================================="
+
 # save the environment to be able to restore it in the FCGI daemon (used
 # in /usr/local/bin/qgis_mapsev_wrapper) for the startup code.
 ${GET_ENV} | sed -e 's/^\([^=]*\)=.*/PassEnv \1/' > /tmp/pass-env
@@ -21,47 +28,48 @@ aws s3 sync "${S3_BUCKET}/${S3_FOLDER}" "${LOCAL_DIR}"
 
 if [ $? -eq 0 ]; then
     echo "Download complete!"
+
+    # Set all .logs files in /etc/mapserver/logs to 777 (without using `find`)
+    LOG_DIR="${LOCAL_DIR}/logs"
+    if [ -d "${LOG_DIR}" ]; then
+        echo "Setting permissions to 777 for all .logs files in ${LOG_DIR}"
+        for file in "${LOG_DIR}"/*.logs; do
+            [ -e "$file" ] || continue  # Skip if no .logs files exist
+            chmod 777 "$file"
+        done
+    else
+        echo "Log directory ${LOG_DIR} does not exist."
+    fi
 else
     echo "Failed to download from S3." >&2
 fi
 
-# Create include files base off of aws environmental variables
+# Create include files based off of AWS environmental variables
 ${GET_ENV} | grep -i '^fim_' | sed -e 's/^[Ff][Ii][Mm]_\(.*\)=\(.*\)$/config \1 "\2"/' > /etc/mapserver/include/aws.inc
 
 # Update Include files
-# Specify the prefix to look for
 PREFIXES=("DB_ADMIN" "DB_PUBLIC" "DB_SIMDAMS")
 for PREFIX in "${PREFIXES[@]}"; do
-  # Extract the part after the underscore
   SUFFIX="${PREFIX#*_}"
-  
-  # Convert it to lowercase
   LOWERCASE_SUFFIX=$(echo "$SUFFIX" | tr '[:upper:]' '[:lower:]')
-  
-  # Output the result
   echo "$PREFIX -> $LOWERCASE_SUFFIX"
-  # Input file containing variables to update
-  INPUT_FILE="/etc/mapserver/include/${LOWERCASE_SUFFIX}.inc"
 
-  # Temporary file to hold updates
+  INPUT_FILE="/etc/mapserver/include/${LOWERCASE_SUFFIX}.inc"
   TEMP_FILE="$(mktemp)"
 
-  # Loop through the lines in the input file
   while IFS='=' read -r VAR_NAME VAR_VALUE; do
     if [[ $VAR_NAME =~ ^DB_ ]]; then
-      
-      # Replace occurrences of the variable in the file
       sed -i "s|\${${VAR_NAME}}|${VAR_VALUE}|g" "$INPUT_FILE"
     fi
   done < <(env)
 done
 
-if [ "${UID}" == 0 ]; then
-    echo "Switching listen port to 80"
-    cd /tmp
-    sed -i -e 's/<VirtualHost \*:8080>/<VirtualHost *:80>/' /etc/apache2/sites-available/000-default.conf
-    sed -i -e 's/Listen 8080$/Listen 80/' /etc/apache2/ports.conf
-fi
+# if [ "${UID}" == 0 ]; then
+#     echo "Switching listen port to 80"
+#     cd /tmp
+#     sed -i -e 's/<VirtualHost \*:8080>/<VirtualHost *:80>/' /etc/apache2/sites-available/000-default.conf
+#     sed -i -e 's/Listen 8080$/Listen 80/' /etc/apache2/ports.conf
+# fi
 
 trap '' WINCH
 
