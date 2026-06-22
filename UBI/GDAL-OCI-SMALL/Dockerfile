@@ -62,10 +62,10 @@ RUN mkdir -p /buildtmp /build_thirdparty/usr/lib64
 # switch to a build directory
 WORKDIR /buildtmp
 
-RUN pip3 install --upgrade --force-reinstall pip
-RUN pip3 install --upgrade --force-reinstall wheel virtualenv 
+RUN pip3 install --upgrade pip
+RUN pip3 install --upgrade wheel virtualenv 
 
-RUN pip3 install --upgrade --force-reinstall numpy rtree geopandas rasterio rio-cogeo
+RUN pip3 install --upgrade numpy rtree geopandas rasterio rio-cogeo
 # Install SWIG no idea why this doesn't show in the repo but it doesn't
 RUN curl -o swig.rpm https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/codeready-builder/os/Packages/s/swig-4.1.1-1.module+el9.2.0+17621+ec36a39e.x86_64.rpm -SL \
     && dnf install -y swig.rpm

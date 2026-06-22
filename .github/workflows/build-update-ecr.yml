@@ -1,0 +1,195 @@
+name: Build and Push UPDATE Images to ECR
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - UPDATE/**
+      - .github/workflows/build-update-ecr.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: UPDATE environment to build
+        required: true
+        type: choice
+        options:
+          - DEV
+          - TEST
+          - PROD
+      images:
+        description: Comma-separated image names to build. Leave blank to build every file in UPDATE/<environment>.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: update-ecr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.collect.outputs.matrix }}
+      has_images: ${{ steps.collect.outputs.has_images }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect build targets
+        id: collect
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+          REQUESTED_ENV: ${{ inputs.environment }}
+          REQUESTED_IMAGES: ${{ inputs.images }}
+        run: |
+          set -euo pipefail
+
+          collect_env_files() {
+            local target_env="$1"
+            find "UPDATE/${target_env}" -maxdepth 1 -type f | sort
+          }
+
+          collect_selected_images() {
+            local target_env="$1"
+            local requested="$2"
+            IFS=',' read -r -a items <<< "$requested"
+            for item in "${items[@]}"; do
+              image_name="$(echo "$item" | xargs)"
+              [[ -n "$image_name" ]] || continue
+              dockerfile="UPDATE/${target_env}/${image_name}"
+              if [[ ! -f "$dockerfile" ]]; then
+                echo "Missing UPDATE file: $dockerfile" >&2
+                exit 1
+              fi
+              printf '%s\n' "$dockerfile"
+            done
+          }
+
+          collect_changed_files() {
+            if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+              git ls-files 'UPDATE/*'
+              return
+            fi
+
+            git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- UPDATE
+          }
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ -z "$REQUESTED_ENV" ]]; then
+              echo "workflow_dispatch requires an environment input" >&2
+              exit 1
+            fi
+
+            if [[ -n "${REQUESTED_IMAGES// }" ]]; then
+              mapfile -t raw_targets < <(collect_selected_images "$REQUESTED_ENV" "$REQUESTED_IMAGES")
+            else
+              mapfile -t raw_targets < <(collect_env_files "$REQUESTED_ENV")
+            fi
+          else
+            mapfile -t raw_targets < <(collect_changed_files)
+          fi
+
+          declare -A seen=()
+          include_json='[]'
+
+          for dockerfile in "${raw_targets[@]}"; do
+            [[ -f "$dockerfile" ]] || continue
+
+            if [[ ! "$dockerfile" =~ ^UPDATE/(DEV|TEST|PROD)/([^/]+)$ ]]; then
+              continue
+            fi
+
+            target_env="${BASH_REMATCH[1]}"
+            image_name="${BASH_REMATCH[2]}"
+            dedupe_key="${target_env}/${image_name}"
+
+            if [[ -n "${seen[$dedupe_key]:-}" ]]; then
+              continue
+            fi
+            seen[$dedupe_key]=1
+
+            case "$target_env" in
+              DEV)
+                aws_account_id='038611608639'
+                aws_region='us-east-1'
+                ;;
+              TEST)
+                aws_account_id='276847049069'
+                aws_region='us-gov-west-1'
+                ;;
+              PROD)
+                aws_account_id='648157167324'
+                aws_region='us-gov-west-1'
+                ;;
+              *)
+                echo "Unsupported environment: $target_env" >&2
+                exit 1
+                ;;
+            esac
+
+            image_tag='release'
+            if [[ "$image_name" == 'esd-download-api' || "$image_name" == 'esd-upload-api' ]]; then
+              image_tag='prod'
+            fi
+
+            include_json="$(jq -c \
+              --arg dockerfile "$dockerfile" \
+              --arg environment "$target_env" \
+              --arg image "$image_name" \
+              --arg tag "$image_tag" \
+              --arg aws_account_id "$aws_account_id" \
+              --arg aws_region "$aws_region" \
+              '. + [{dockerfile: $dockerfile, environment: $environment, image: $image, tag: $tag, aws_account_id: $aws_account_id, aws_region: $aws_region}]' \
+              <<< "$include_json")"
+          done
+
+          matrix="$(jq -c --argjson include "$include_json" '{include: $include}')"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+          if [[ "$include_json" == '[]' ]]; then
+            echo 'has_images=false' >> "$GITHUB_OUTPUT"
+            echo 'No UPDATE image changes detected.'
+          else
+            echo 'has_images=true' >> "$GITHUB_OUTPUT"
+            echo "$matrix"
+          fi
+
+  build-and-push:
+    needs: prepare-matrix
+    if: needs.prepare-matrix.outputs.has_images == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    environment: ${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ matrix.aws_region }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          no-cache: true
+          platforms: linux/amd64
+          push: true
+          tags: ${{ matrix.aws_account_id }}.dkr.ecr.${{ matrix.aws_region }}.amazonaws.com/${{ matrix.image }}:${{ matrix.tag }}

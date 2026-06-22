@@ -3,7 +3,7 @@
 # Define the target directory
 
 # directories=("./UPDATE/DEV" "./UPDATE/PROD")
-directories=("./UPDATE/PROD")
+directories=("./UPDATE/TEST")
 
 # Loop through files in the target directory
 for directory in "${directories[@]}"; do
@@ -16,6 +16,9 @@ for directory in "${directories[@]}"; do
   if [ "$environment" == "PROD" ]; then
     repo="648157167324.dkr.ecr.us-gov-west-1.amazonaws.com"
   fi
+  if [ "$environment" == "TEST" ]; then
+    repo="276847049069.dkr.ecr.us-gov-west-1.amazonaws.com"
+  fi
   for file in "$directory"/*; do
     if [ -f "$file" ]; then
         xbase=${file##*/}
@@ -24,10 +27,10 @@ for directory in "${directories[@]}"; do
           echo "$file"
           echo "$xfilename"
           # echo 038611608639.dkr.ecr.us-east-1.amazonaws.com/$xfilename:release
-          echo $repo/$xfilename:prod
-          # docker build -t $xfilename -f $file --no-cache .
-          # docker tag $xfilename $repo/$xfilename:prod
-          # docker push $repo/$xfilename:prod
+          echo $repo/$xfilename:test
+          docker build -t $xfilename -f $file --no-cache .
+          docker tag $xfilename $repo/$xfilename:test
+          docker push $repo/$xfilename:test
       else
           echo "$file"
           echo "$xfilename"
