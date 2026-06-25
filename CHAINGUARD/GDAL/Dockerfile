@@ -2,6 +2,16 @@
 ARG platform=linux/amd64
 FROM --platform=${platform} cgr.dev/chainguard/wolfi-base AS builder
 
+# Toggle selected external integrations at build time (ON/OFF)
+ARG ENABLE_OCI=ON
+ARG ENABLE_TILEDB=ON
+ARG ENABLE_SFCGAL=ON
+ARG ENABLE_NETCDF=ON
+ARG ENABLE_POSTGRESQL=ON
+ARG ENABLE_ARROW=ON
+ARG ENABLE_HDF5=ON
+ARG ENABLE_GEOS=ON
+
 # LATEST GDAL is 3.9.2 but postgis won't build
 ENV \
     ARROW_VERSION=16.1.0 \
@@ -209,19 +219,23 @@ RUN cd ${BUILD} && \
     rm -rf cgal
 
 # SFCGAL
-RUN cd ${BUILD} && \
-    mkdir sfcgal && \
-    wget -qO- https://gitlab.com/SFCGAL/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz \
-    | tar xvz -C sfcgal --strip-components=1 && \
-    cd sfcgal && \
-    sed -i 's/\bsystem\b//g' CMakeLists.txt && \
-    cmake -S . -DCMAKE_INSTALL_PREFIX=${PREFIX} -B build && \
-    cmake --build build && \
-    cmake --install build && \
-    cd build && \
-    make DESTDIR="/build_thirdparty" install && \
-    cd ${BUILD} && \
-    rm -rf sfcgal
+RUN if [ "${ENABLE_SFCGAL}" = "ON" ]; then \
+        cd ${BUILD} && \
+        mkdir sfcgal && \
+        wget -qO- https://gitlab.com/SFCGAL/SFCGAL/-/archive/v${SFCGAL_VERSION}/SFCGAL-v${SFCGAL_VERSION}.tar.gz \
+        | tar xvz -C sfcgal --strip-components=1 && \
+        cd sfcgal && \
+        sed -i 's/\bsystem\b//g' CMakeLists.txt && \
+        cmake -S . -DCMAKE_INSTALL_PREFIX=${PREFIX} -B build && \
+        cmake --build build && \
+        cmake --install build && \
+        cd build && \
+        make DESTDIR="/build_thirdparty" install && \
+        cd ${BUILD} && \
+        rm -rf sfcgal; \
+    else \
+        echo "Skipping SFCGAL build (ENABLE_SFCGAL=${ENABLE_SFCGAL})"; \
+    fi
 
 # KML
 RUN cd ${BUILD} && \
@@ -252,72 +266,84 @@ inline void intrusive_ptr_release(T* r) { kmlbase::intrusive_ptr_release(reinter
     rm -rf libkml
 
 # HDF5
-RUN cd ${BUILD} && \
-    wget https://github.com/HDFGroup/hdf5/releases/download/${HDF5_VERSION}/hdf5-${HDF5_VERSION}.tar.gz -O hdf5.tar.gz && \
-    tar -xvzf hdf5.tar.gz && \
-    cd hdf5-${HDF5_VERSION} && \
-    mkdir build && \
-    cmake -S . -B build \
-    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=ON \
-    -DHDF5_BUILD_CPP_LIB=ON \
-    -DHDF5_BUILD_HL_LIB=ON \
-    -DHDF5_ENABLE_Z_LIB_SUPPORT=ON \
-    -DHDF5_ENABLE_ZLIB_SUPPORT=ON \
-    -DZLIB_INCLUDE_DIR=/usr/include \
-    -DZLIB_LIBRARY_RELEASE=/usr/lib/libz.so \
-    -DZLIB_LIBRARY=/usr/lib/libz.so \
-    && cmake --build build -j$(nproc) && \
-    cmake --install build && \
-    cmake --install build --prefix="/build_thirdparty/usr" && \
-    cd ${BUILD} && \
-    rm -rf hdf5-${HDF5_VERSION} hdf5.tar.gz
+RUN if [ "${ENABLE_HDF5}" = "ON" ]; then \
+        cd ${BUILD} && \
+        wget https://github.com/HDFGroup/hdf5/releases/download/${HDF5_VERSION}/hdf5-${HDF5_VERSION}.tar.gz -O hdf5.tar.gz && \
+        tar -xvzf hdf5.tar.gz && \
+        cd hdf5-${HDF5_VERSION} && \
+        mkdir build && \
+        cmake -S . -B build \
+        -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=ON \
+        -DHDF5_BUILD_CPP_LIB=ON \
+        -DHDF5_BUILD_HL_LIB=ON \
+        -DHDF5_ENABLE_Z_LIB_SUPPORT=ON \
+        -DHDF5_ENABLE_ZLIB_SUPPORT=ON \
+        -DZLIB_INCLUDE_DIR=/usr/include \
+        -DZLIB_LIBRARY_RELEASE=/usr/lib/libz.so \
+        -DZLIB_LIBRARY=/usr/lib/libz.so \
+        && cmake --build build -j$(nproc) && \
+        cmake --install build && \
+        cmake --install build --prefix="/build_thirdparty/usr" && \
+        cd ${BUILD} && \
+        rm -rf hdf5-${HDF5_VERSION} hdf5.tar.gz; \
+    else \
+        echo "Skipping HDF5 build (ENABLE_HDF5=${ENABLE_HDF5})"; \
+    fi
 
 # NetCDF-C
-RUN cd ${BUILD} && \
-    mkdir netcdf && \
-    wget https://downloads.unidata.ucar.edu/netcdf-c/${NETCDF_VERSION}/netcdf-c-${NETCDF_VERSION}.tar.gz -O netcdf.tar.gz && \
-    tar -xvzf netcdf.tar.gz  -C netcdf --strip-components=1 && \
-    cd netcdf && \
-    mkdir build && \
-    cd build && \
-    cmake .. \
-    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-    -DCMAKE_INSTALL_LIBDIR=lib \
-    -DCMAKE_PREFIX_PATH=${PREFIX} \
-    -DHDF5_DIR=${PREFIX}/lib/cmake/hdf5 \
-    -DBUILD_SHARED_LIBS=ON \
-    -DNETCDF_ENABLE_HDF5=ON \
-    -DENABLE_DAP=OFF \
-    -DENABLE_BYTERANGE=ON \
-    && make -j$(nproc) && \
-    make install && \
-    make DESTDIR="/build_thirdparty" install && \
-    mkdir -p /build_thirdparty/usr/lib/cmake/netCDF && \
-    cp -r ${PREFIX}/lib/cmake/netCDF/* /build_thirdparty/usr/lib/cmake/netCDF/ 2>/dev/null || true && \
-    cd ${BUILD} && \
-    rm -rf netcdf netcdf.tar.gz
+RUN if [ "${ENABLE_NETCDF}" = "ON" ]; then \
+        cd ${BUILD} && \
+        mkdir netcdf && \
+        wget https://downloads.unidata.ucar.edu/netcdf-c/${NETCDF_VERSION}/netcdf-c-${NETCDF_VERSION}.tar.gz -O netcdf.tar.gz && \
+        tar -xvzf netcdf.tar.gz  -C netcdf --strip-components=1 && \
+        cd netcdf && \
+        mkdir build && \
+        cd build && \
+        cmake .. \
+        -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_PREFIX_PATH=${PREFIX} \
+        -DHDF5_DIR=${PREFIX}/lib/cmake/hdf5 \
+        -DBUILD_SHARED_LIBS=ON \
+        -DNETCDF_ENABLE_HDF5=ON \
+        -DENABLE_DAP=OFF \
+        -DENABLE_BYTERANGE=ON \
+        && make -j$(nproc) && \
+        make install && \
+        make DESTDIR="/build_thirdparty" install && \
+        mkdir -p /build_thirdparty/usr/lib/cmake/netCDF && \
+        cp -r ${PREFIX}/lib/cmake/netCDF/* /build_thirdparty/usr/lib/cmake/netCDF/ 2>/dev/null || true && \
+        cd ${BUILD} && \
+        rm -rf netcdf netcdf.tar.gz; \
+    else \
+        echo "Skipping NetCDF build (ENABLE_NETCDF=${ENABLE_NETCDF})"; \
+    fi
 
 # Install Oracle Instant Client
 ARG OracleMJR
-RUN cd ${BUILD} && \
-    mkdir oic && \
-    OracleMJR=$(echo "$ORACLE_VERSION" | tr -d '.') && \
-    curl -o instantclient-basiclite.zip https://download.oracle.com/otn_software/linux/instantclient/$OracleMJR/instantclient-basic-linux.x64-${ORACLE_VERSION}dbru.zip -SL && \
-    unzip instantclient-basiclite.zip && \
-    curl -o instantclient-sdk.zip https://download.oracle.com/otn_software/linux/instantclient/$OracleMJR/instantclient-sdk-linux.x64-${ORACLE_VERSION}dbru.zip -SL && \
-    unzip -o instantclient-sdk.zip && \
-    curl -o instantclient-sqlplus.zip https://download.oracle.com/otn_software/linux/instantclient/$OracleMJR/instantclient-sqlplus-linux.x64-${ORACLE_VERSION}dbru.zip -SL && \
-    unzip -o instantclient-sqlplus.zip && \
-    mv instantclient*/ ${PREFIX}/lib/instantclient && \
-    rm instantclient-basiclite.zip && \
-    rm instantclient-sdk.zip && \
-    rm instantclient-sqlplus.zip && \
-    echo '/usr/lib/instantclient' | tee -a /etc/ld.so.conf.d/oracle_instantclient.conf && \
-    ldconfig /usr/lib && \
-    mkdir -p /build_thirdparty/usr/lib && \
-    cp -Pa ${PREFIX}/lib/instantclient/. /build_thirdparty/usr/lib/instantclient 
+RUN if [ "${ENABLE_OCI}" = "ON" ]; then \
+        cd ${BUILD} && \
+        mkdir oic && \
+        OracleMJR=$(echo "$ORACLE_VERSION" | tr -d '.') && \
+        curl -o instantclient-basiclite.zip https://download.oracle.com/otn_software/linux/instantclient/$OracleMJR/instantclient-basic-linux.x64-${ORACLE_VERSION}dbru.zip -SL && \
+        unzip instantclient-basiclite.zip && \
+        curl -o instantclient-sdk.zip https://download.oracle.com/otn_software/linux/instantclient/$OracleMJR/instantclient-sdk-linux.x64-${ORACLE_VERSION}dbru.zip -SL && \
+        unzip -o instantclient-sdk.zip && \
+        curl -o instantclient-sqlplus.zip https://download.oracle.com/otn_software/linux/instantclient/$OracleMJR/instantclient-sqlplus-linux.x64-${ORACLE_VERSION}dbru.zip -SL && \
+        unzip -o instantclient-sqlplus.zip && \
+        mv instantclient*/ ${PREFIX}/lib/instantclient && \
+        rm instantclient-basiclite.zip && \
+        rm instantclient-sdk.zip && \
+        rm instantclient-sqlplus.zip && \
+        echo '/usr/lib/instantclient' | tee -a /etc/ld.so.conf.d/oracle_instantclient.conf && \
+        ldconfig /usr/lib && \
+        mkdir -p /build_thirdparty/usr/lib && \
+        cp -Pa ${PREFIX}/lib/instantclient/. /build_thirdparty/usr/lib/instantclient; \
+    else \
+        echo "Skipping Oracle Instant Client build (ENABLE_OCI=${ENABLE_OCI})"; \
+    fi
 
 # OpenJPEG
 RUN cd ${BUILD} && \
@@ -389,18 +415,22 @@ RUN cd ${BUILD} && \
     rm -rf giflib
 
 # GEOS
-RUN cd ${BUILD} && \
-    mkdir geos && \
-    wget -qO- https://download.osgeo.org/geos/geos-${GEOS_VERSION}.tar.bz2 | tar -xvj -C geos --strip-components=1 && \
-    cd geos && \
-    cmake . \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-    -DBUILD_TESTING=OFF && \
-    make install && \
-    make DESTDIR="/build_thirdparty" install && \
-    cd ${BUILD} && \
-    rm -rf geos
+RUN if [ "${ENABLE_GEOS}" = "ON" ]; then \
+        cd ${BUILD} && \
+        mkdir geos && \
+        wget -qO- https://download.osgeo.org/geos/geos-${GEOS_VERSION}.tar.bz2 | tar -xvj -C geos --strip-components=1 && \
+        cd geos && \
+        cmake . \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+        -DBUILD_TESTING=OFF && \
+        make install && \
+        make DESTDIR="/build_thirdparty" install && \
+        cd ${BUILD} && \
+        rm -rf geos; \
+    else \
+        echo "Skipping GEOS build (ENABLE_GEOS=${ENABLE_GEOS})"; \
+    fi
 
 # WEbP
 RUN cd ${BUILD} && \
@@ -521,29 +551,33 @@ RUN cd ${BUILD} && \
     rm -rf aws-sdk-cpp
 
 # TileDB
-RUN cd ${BUILD} && \
-    mkdir tiledb && \
-    wget -q https://github.com/TileDB-Inc/TileDB/archive/refs/tags/${TILEDB_VERSION}.tar.gz -O - \
-    | tar xz -C tiledb --strip-components=1 && \
-    cd tiledb && \
-    mkdir build_cmake && \
-    cd build_cmake && \
-    cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-    -DCMAKE_DISABLE_FIND_PACKAGE_lz4=TRUE \
-    -DTILEDB_S3=OFF \
-    -DTILEDB_WERROR=OFF \
-    -DTILEDB_DISABLE_AUTO_VCPKG=TRUE \
-    -DTILEDB_TESTS=OFF \
-    -DCOMPILER_SUPPORTS_AVX2=FALSE && \
-    make -j$(nproc) && \
-    make install && \
-    make DESTDIR="/build_thirdparty" install && \
-    for i in /build_thirdparty/usr/lib/*; do strip -s $i 2>/dev/null || /bin/true; done && \
-    for i in /build_thirdparty/usr/bin/*; do strip -s $i 2>/dev/null || /bin/true; done && \
-    cd ${BUILD} && \
-    rm -rf tiledb
+RUN if [ "${ENABLE_TILEDB}" = "ON" ]; then \
+        cd ${BUILD} && \
+        mkdir tiledb && \
+        wget -q https://github.com/TileDB-Inc/TileDB/archive/refs/tags/${TILEDB_VERSION}.tar.gz -O - \
+        | tar xz -C tiledb --strip-components=1 && \
+        cd tiledb && \
+        mkdir build_cmake && \
+        cd build_cmake && \
+        cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+        -DCMAKE_DISABLE_FIND_PACKAGE_lz4=TRUE \
+        -DTILEDB_S3=OFF \
+        -DTILEDB_WERROR=OFF \
+        -DTILEDB_DISABLE_AUTO_VCPKG=TRUE \
+        -DTILEDB_TESTS=OFF \
+        -DCOMPILER_SUPPORTS_AVX2=FALSE && \
+        make -j$(nproc) && \
+        make install && \
+        make DESTDIR="/build_thirdparty" install && \
+        for i in /build_thirdparty/usr/lib/*; do strip -s $i 2>/dev/null || /bin/true; done && \
+        for i in /build_thirdparty/usr/bin/*; do strip -s $i 2>/dev/null || /bin/true; done && \
+        cd ${BUILD} && \
+        rm -rf tiledb; \
+    else \
+        echo "Skipping TileDB build (ENABLE_TILEDB=${ENABLE_TILEDB})"; \
+    fi
 
 # Build real bison/flex
 RUN cd ${BUILD} && \
@@ -591,63 +625,70 @@ $RealBin = '.';
 EOF
 
 # PostgreSQL
-RUN \
-    mkdir postgresql && \
-    wget -qO- https://ftp.postgresql.org/pub/source/v${POSTGRESQL_VERSION}/postgresql-${POSTGRESQL_VERSION}.tar.gz \
-    | tar xvz -C postgresql --strip-components=1 && \
-    cd postgresql && \
-    ./configure  --with-openssl --without-readline --prefix=$PREFIX && \
-    make install && \
-    make DESTDIR="/build_thirdparty" install && \
-    ldconfig /usr/lib && \
-    cd ${BUILD} && \
-    rm -rf postgresql
+RUN if [ "${ENABLE_POSTGRESQL}" = "ON" ]; then \
+        mkdir postgresql && \
+        wget -qO- https://ftp.postgresql.org/pub/source/v${POSTGRESQL_VERSION}/postgresql-${POSTGRESQL_VERSION}.tar.gz \
+        | tar xvz -C postgresql --strip-components=1 && \
+        cd postgresql && \
+        ./configure  --with-openssl --without-readline --prefix=$PREFIX && \
+        make install && \
+        make DESTDIR="/build_thirdparty" install && \
+        ldconfig /usr/lib && \
+        cd ${BUILD} && \
+        rm -rf postgresql; \
+    else \
+        echo "Skipping PostgreSQL build (ENABLE_POSTGRESQL=${ENABLE_POSTGRESQL})"; \
+    fi
 
 # Apache Arrow
-RUN cd ${BUILD} && \
-    mkdir arrow && \
-    wget -qO- https://github.com/apache/arrow/archive/refs/tags/apache-arrow-${ARROW_VERSION}.tar.gz \
-    | tar xvz -C arrow --strip-components=1 && \
-    cd arrow/cpp && \
-    sed -i 's@include(AWSSDKVariables)@include(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/AWSSDKVariables.cmake)@' cmake_modules/ThirdpartyToolchain.cmake && \
-    sed -i 's@include(san-config)@include(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/san-config.cmake)@' CMakeLists.txt && \
-    sed -i 's/resolve_dependency(lz4Alt/resolve_dependency(lz4/g' cmake_modules/ThirdpartyToolchain.cmake && \
-    sed -i '/set(EP_COMMON_CMAKE_ARGS/a\  list(APPEND EP_COMMON_CMAKE_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")' cmake_modules/ThirdpartyToolchain.cmake && \
-    mkdir build && \
-    cd build && \
-    cmake .. \
-    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-    -DCMAKE_INSTALL_LIBDIR=lib \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_MODULE_PATH=${BUILD}/arrow/cpp/cmake_modules \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-    -DARROW_DEPENDENCY_SOURCE=BUNDLED \
-    -DThrift_SOURCE=SYSTEM \
-    -Dlz4_SOURCE=SYSTEM \
-    -Dlz4Alt_SOURCE=SYSTEM \
-    -DZLIB_SOURCE=SYSTEM \
-    -Dzstd_SOURCE=BUNDLED \
-    -Dutf8proc_SOURCE=BUNDLED \
-    -Dxsimd_SOURCE=SYSTEM \
-    -DARROW_PARQUET=ON \
-    -DARROW_FILESYSTEM=ON \
-    -DARROW_DATASET=ON \
-    -DARROW_COMPUTE=OFF \
-    -DARROW_IPC=OFF \
-    -DARROW_WITH_LZ4=OFF \
-    -DARROW_WITH_ZLIB=ON \
-    -DARROW_WITH_ZSTD=ON \
-    -DARROW_BUILD_SHARED=ON \
-    -DARROW_BUILD_STATIC=OFF \
-    -DARROW_JEMALLOC=OFF \
-    -DARROW_MIMALLOC=OFF \
-    -DARROW_BUILD_TESTS=OFF && \
-    make -j$(nproc) && \
-    make install && \
-    make DESTDIR="/build_thirdparty" install && \
-    cd ${BUILD} && \
-    rm -rf arrow
+RUN if [ "${ENABLE_ARROW}" = "ON" ]; then \
+        cd ${BUILD} && \
+        mkdir arrow && \
+        wget -qO- https://github.com/apache/arrow/archive/refs/tags/apache-arrow-${ARROW_VERSION}.tar.gz \
+        | tar xvz -C arrow --strip-components=1 && \
+        cd arrow/cpp && \
+        sed -i 's@include(AWSSDKVariables)@include(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/AWSSDKVariables.cmake)@' cmake_modules/ThirdpartyToolchain.cmake && \
+        sed -i 's@include(san-config)@include(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/san-config.cmake)@' CMakeLists.txt && \
+        sed -i 's/resolve_dependency(lz4Alt/resolve_dependency(lz4/g' cmake_modules/ThirdpartyToolchain.cmake && \
+        sed -i '/set(EP_COMMON_CMAKE_ARGS/a\  list(APPEND EP_COMMON_CMAKE_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")' cmake_modules/ThirdpartyToolchain.cmake && \
+        mkdir build && \
+        cd build && \
+        cmake .. \
+        -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        -DCMAKE_MODULE_PATH=${BUILD}/arrow/cpp/cmake_modules \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DARROW_DEPENDENCY_SOURCE=BUNDLED \
+        -DThrift_SOURCE=SYSTEM \
+        -Dlz4_SOURCE=SYSTEM \
+        -Dlz4Alt_SOURCE=SYSTEM \
+        -DZLIB_SOURCE=SYSTEM \
+        -Dzstd_SOURCE=BUNDLED \
+        -Dutf8proc_SOURCE=BUNDLED \
+        -Dxsimd_SOURCE=SYSTEM \
+        -DARROW_PARQUET=ON \
+        -DARROW_FILESYSTEM=ON \
+        -DARROW_DATASET=ON \
+        -DARROW_COMPUTE=OFF \
+        -DARROW_IPC=OFF \
+        -DARROW_WITH_LZ4=OFF \
+        -DARROW_WITH_ZLIB=ON \
+        -DARROW_WITH_ZSTD=ON \
+        -DARROW_BUILD_SHARED=ON \
+        -DARROW_BUILD_STATIC=OFF \
+        -DARROW_JEMALLOC=OFF \
+        -DARROW_MIMALLOC=OFF \
+        -DARROW_BUILD_TESTS=OFF && \
+        make -j$(nproc) && \
+        make install && \
+        make DESTDIR="/build_thirdparty" install && \
+        cd ${BUILD} && \
+        rm -rf arrow; \
+    else \
+        echo "Skipping Arrow build (ENABLE_ARROW=${ENABLE_ARROW})"; \
+    fi
 
 RUN strip -s /build_thirdparty/usr/lib/* || /bin/true \
     && strip -s /build_proj/usr/bin/* || /bin/true
@@ -676,7 +717,7 @@ RUN mkdir gdal \
     -DBUILD_TESTING=OFF \
     -DGDAL_USE_ARCHIVE=OFF \
     -DGDAL_USE_ARMADILLO=OFF \
-    -DGDAL_USE_ARROW=ON \
+    -DGDAL_USE_ARROW=${ENABLE_ARROW} \
     -DGDAL_USE_BASISU=OFF \
     -DGDAL_USE_BLOSC=OFF \
     -DGDAL_USE_BRUNSLI=OFF \
@@ -692,13 +733,13 @@ RUN mkdir gdal \
     -DGDAL_USE_FYBA=OFF \
     -DGDAL_USE_GEOTIFF=ON \
     -DGDAL_USE_GEOTIFF_INTERNAL=OFF \
-    -DGDAL_USE_GEOS=ON \
+    -DGDAL_USE_GEOS=${ENABLE_GEOS} \
     -DGDAL_USE_GIF=ON \
     -DGDAL_USE_GIF_INTERNAL=OFF \
     -DGDAL_USE_GTA=OFF \
     -DGDAL_USE_HEIF=OFF \
     -DGDAL_USE_HDF4=OFF \
-    -DGDAL_USE_HDF5=ON \
+    -DGDAL_USE_HDF5=${ENABLE_HDF5} \
     -DGDAL_USE_HDFS=OFF \
     -DGDAL_USE_ICONV=ON \
     -DGDAL_USE_IDB=OFF \
@@ -725,7 +766,7 @@ RUN mkdir gdal \
     -DGDAL_USE_MSSQL_NCLI=OFF \
     -DGDAL_USE_MSSQL_ODBC=OFF \
     -DGDAL_USE_MYSQL=OFF \
-    -DGDAL_USE_NETCDF=ON \
+    -DGDAL_USE_NETCDF=${ENABLE_NETCDF} \
     -DNetCDF_ROOT=/usr \
     -DGDAL_USE_ODBC=OFF \
     -DGDAL_USE_ODBCCPP=OFF \
@@ -737,22 +778,22 @@ RUN mkdir gdal \
     -DGDAL_USE_OPENJPEG=ON \
     -DGDAL_USE_OPENSSL=ON \
     -DOracle_ROOT=/usr/lib/instantclient \
-    -DGDAL_USE_ORACLE=ON \
-    -DGDAL_USE_PARQUET=ON \
+    -DGDAL_USE_ORACLE=${ENABLE_OCI} \
+    -DGDAL_USE_PARQUET=${ENABLE_ARROW} \
     -DGDAL_USE_PCRE2=ON \
     -DGDAL_USE_PDFIUM=OFF \
     -DGDAL_USE_PNG=ON \
     -DGDAL_USE_PNG_INTERNAL=OFF \
     -DGDAL_USE_POPPLER=OFF \
-    -DGDAL_USE_POSTGRESQL=ON \
+    -DGDAL_USE_POSTGRESQL=${ENABLE_POSTGRESQL} \
     -DGDAL_USE_QHULL=OFF \
     -DGDAL_USE_QHULL_INTERNAL=OFF \
     -DGDAL_USE_RASTERLITE2=OFF \
     -DGDAL_USE_RDB=OFF \
     -DGDAL_USE_SPATIALITE=OFF \
     -DGDAL_USE_SQLITE3=ON \
-    -DGDAL_USE_SFCGAL=ON \
-    -DGDAL_USE_TILEDB=ON \
+    -DGDAL_USE_SFCGAL=${ENABLE_SFCGAL} \
+    -DGDAL_USE_TILEDB=${ENABLE_TILEDB} \
     -DGDAL_USE_WEBP=ON \
     -DGDAL_USE_ZLIB=ON \
     -DGDAL_USE_ZSTD=ON \
@@ -779,6 +820,8 @@ RUN for root in /build_thirdparty/usr /build_proj/usr /build_gdal/usr; do \
 # Final Runtime Stage
 # ==============================================================================
 FROM --platform=${platform} cgr.dev/chainguard/wolfi-base AS runtime
+
+ARG ENABLE_OCI=ON
 
 # Install only the runtime dependencies (no -dev packages) required by GDAL/PROJ
 RUN apk update && apk add --no-cache \
@@ -822,7 +865,9 @@ ENV PREFIX=/usr \
     LD_LIBRARY_PATH=/usr/lib:/usr/lib/instantclient
 
 # Ensure the dynamic linker knows about the new Oracle and GDAL libraries
-RUN echo '/usr/lib/instantclient' | tee -a /etc/ld.so.conf.d/oracle_instantclient.conf \
+RUN if [ "${ENABLE_OCI}" = "ON" ]; then \
+        echo '/usr/lib/instantclient' | tee -a /etc/ld.so.conf.d/oracle_instantclient.conf; \
+    fi \
     && ldconfig /usr/lib 2>/dev/null || true
 
 # Verify installation, including Python GDAL bindings
