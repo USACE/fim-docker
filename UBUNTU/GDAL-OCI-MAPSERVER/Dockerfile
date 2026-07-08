@@ -2,7 +2,7 @@ ARG platform=linux/amd64
 FROM --platform=${platform} ghcr.io/osgeo/gdal:ubuntu-small-3.8.5 AS gdal
 # https://github.com/camptocamp/docker-mapserver/tree/master
 FROM gdal AS builder
-LABEL maintainer Camptocamp "info@camptocamp.com"
+LABEL maintainer="Camptocamp <info@camptocamp.com>"
 SHELL ["/bin/bash", "-o", "pipefail", "-cux"]
 
 ENV ORACLE_VERSION=21.15.0.0.0 \
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked \
         clang libprotobuf-c-dev protobuf-c-compiler libharfbuzz-dev libcairo2-dev librsvg2-dev libaio-dev \
     && ln -s /usr/local/lib/libproj.so.25 /usr/local/lib/libproj.so
 
-ARG MAPSERVER_BRANCH=branch-8-2
+ARG MAPSERVER_BRANCH=branch-8-6
 ARG MAPSERVER_REPO=https://github.com/mapserver/mapserver
 
 RUN git clone ${MAPSERVER_REPO} --branch=${MAPSERVER_BRANCH} --depth=100 /src
@@ -61,8 +61,19 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked \
        libarchive-tools libaio-dev && \
        mkdir -p /usr/local/lib && \
        cd /usr/local/lib && \
-       (for i in /tmp/instantclient/*.zip; do bsdtar --strip-components=1 -xvf "$i"; done) && \
-       ln -s libnnz19.so /usr/local/lib/libnnz18.so; \
+    (for i in /tmp/instantclient/*.zip; do bsdtar --strip-components=1 -xvf "$i"; done) && \
+    clntsh_target="$(find /usr/local/lib -maxdepth 1 -type f -name 'libclntsh.so*' | sort -V | tail -n 1)" && \
+    occi_target="$(find /usr/local/lib -maxdepth 1 -type f -name 'libocci.so*' | sort -V | tail -n 1)" && \
+    nnz_target="$(find /usr/local/lib -maxdepth 1 -type f \( -name 'libnnz*.so' -o -name 'libnnz*.so.*' \) | sort -V | tail -n 1)" && \
+    test -n "${clntsh_target}" && test -n "${occi_target}" && test -n "${nnz_target}" && \
+    ln -sfn "${clntsh_target}" /usr/local/lib/libclntsh.so && \
+    ln -sfn "${occi_target}" /usr/local/lib/libocci.so && \
+    ln -sfn "${nnz_target}" /usr/local/lib/libnnz19.so && \
+    ln -sf /usr/local/lib/libnnz19.so /usr/local/lib/libnnz18.so && \
+    ln -sf /usr/local/lib/libnnz19.so /usr/local/lib/libnnz12.so && \
+    ln -sf /usr/local/lib/libnnz19.so /usr/local/lib/libnnz11.so && \
+    ln -sf /usr/local/lib/libnnz19.so /usr/local/lib/libnnz10.so && \
+    ln -sfn /usr/local/lib/sdk/include /usr/local/lib/include; \
      fi )
 
 WORKDIR /src/build
@@ -76,6 +87,7 @@ RUN if test "${WITH_ORACLE}" = "ON"; then \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DCMAKE_PREFIX_PATH="/usr/local/lib" \
+    -DORACLE_INCLUDE_DIR=/usr/local/lib/include \
     -DWITH_CLIENT_WMS=1 \
     -DWITH_CLIENT_WFS=1 \
     -DWITH_OGCAPI=1 \
@@ -92,7 +104,7 @@ RUN if test "${WITH_ORACLE}" = "ON"; then \
 RUN ninja install 
 
 FROM gdal AS runner
-LABEL maintainer Camptocamp "info@camptocamp.com"
+LABEL maintainer="Camptocamp <info@camptocamp.com>"
 SHELL ["/bin/bash", "-o", "pipefail", "-cux"]
 
 # Let's copy a few of the settings from /etc/init.d/apache2
@@ -140,7 +152,6 @@ EXPOSE 8080
 COPY --from=builder /usr/local/bin /usr/local/bin/
 COPY --from=builder /usr/local/lib /usr/local/lib/
 COPY --from=builder /usr/local/share/mapserver /usr/local/share/mapserver/
-COPY --from=builder /src/share/ogcapi/templates/html-bootstrap4 /usr/local/share/mapserver/ogcapi/templates/html-bootstrap4/
 
 COPY runtime /
 # COPY mapfiles /etc/mapserver

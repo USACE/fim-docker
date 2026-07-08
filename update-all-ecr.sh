@@ -31,14 +31,14 @@ for directory in "${directories[@]}"; do
           docker build -t $xfilename -f $file --no-cache .
           docker tag $xfilename $repo/$xfilename:test
           docker push $repo/$xfilename:test
-      else
-          echo "$file"
-          echo "$xfilename"
-          # echo 038611608639.dkr.ecr.us-east-1.amazonaws.com/$xfilename:release
-          echo $repo/$xfilename:release
-          docker build -t $xfilename -f $file --no-cache .
-          docker tag $xfilename $repo/$xfilename:release
-          docker push $repo/$xfilename:release
+      # else
+      #     echo "$file"
+      #     echo "$xfilename"
+      #     # echo 038611608639.dkr.ecr.us-east-1.amazonaws.com/$xfilename:release
+      #     echo $repo/$xfilename:release
+      #     docker build -t $xfilename -f $file --no-cache .
+      #     docker tag $xfilename $repo/$xfilename:release
+      #     docker push $repo/$xfilename:release
       fi
     fi
   done

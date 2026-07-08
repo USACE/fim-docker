@@ -65,6 +65,21 @@ docker build --platform linux/amd64 -f CHAINGUARD/GDAL/Dockerfile \
 	-t gdal-chainguard:no-geos .
 ```
 
+Example: minimal with oci:
+
+```bash
+docker build --platform linux/amd64 -f CHAINGUARD/GDAL/Dockerfile \
+	--build-arg ENABLE_GEOS=OFF \
+	--build-arg ENABLE_TILEDB=OFF \
+	--build-arg ENABLE_SFCGAL=OFF \
+	--build-arg ENABLE_NETCDF=OFF \
+	--build-arg ENABLE_POSTGRESQL=OFF \
+	--build-arg ENABLE_ARROW=OFF \
+	--build-arg ENABLE_HDF5=OFF \
+	--build-arg ENABLE_GEOS=OFF \
+	-t gdal-chainguard:oci-only .
+```
+
 ## Verify Build
 
 Check GDAL version:
