@@ -45,7 +45,7 @@ RUN apk update && apk add \
     protobuf-c-dev \
     protobuf-c-compiler \
     harfbuzz-dev \
-    && ln -sf /usr/bin/ninja-build /usr/bin/ninja
+    && ln -sf /usr/lib/ninja-build/bin/ninja /usr/bin/ninja
 
 ARG MAPSERVER_BRANCH=branch-8-6
 ARG MAPSERVER_REPO=https://github.com/mapserver/mapserver
@@ -54,9 +54,20 @@ ARG WITH_ORACLE=ON
 # Clone MapServer Repository
 RUN git clone ${MAPSERVER_REPO} --branch=${MAPSERVER_BRANCH} --depth=100 /src
 
-COPY CHAINGUARD/MAPSERVER/checkout_release /tmp/checkout_release
-RUN chmod +x /tmp/checkout_release \
-    && /tmp/checkout_release ${MAPSERVER_BRANCH}
+# Resolve and checkout the latest release tag that matches this branch.
+RUN cd /src \
+        && BRANCH="${MAPSERVER_BRANCH}" \
+        && TAG_PREFIX="$(printf '%s' "${BRANCH}" | sed 's/^branch-/rel-/')" \
+        && git fetch --tags \
+        && LAST_RELEASE="$(git log --format=%H "--tags=${TAG_PREFIX}*" --no-walk | head -1)" \
+        && if [ -n "${LAST_RELEASE}" ]; then \
+                git checkout --detach "${LAST_RELEASE}"; \
+            else \
+                echo "No release found for branch ${BRANCH}; continuing with branch tip"; \
+            fi \
+        && echo "Will build: -----------------------------------------" \
+        && git log -n 1 --decorate \
+        && echo "-----------------------------------------------------"
 
 # Download Oracle Instant Client SDK components if Oracle is enabled
 RUN if [ "${WITH_ORACLE}" = "ON" ]; then \
@@ -162,6 +173,8 @@ RUN apk update && apk add \
 RUN if [ "${BUILD_ENV}" = "dev" ]; then \
         apk add \
             py3-pip \
+            openssh-client \
+            openssh-keygen \
             krb5 \
             krb5-libs \
             krb5-dev \
@@ -175,12 +188,15 @@ RUN if [ "${BUILD_ENV}" = "dev" ]; then \
 RUN sed -i 's/^Listen 80$/Listen 8080/' /etc/apache2/httpd.conf \
     && sed -i 's/^User .*/User daemon/' /etc/apache2/httpd.conf \
     && sed -i 's/^Group .*/Group daemon/' /etc/apache2/httpd.conf \
+    && sed -i 's|^#LoadModule headers_module modules/mod_headers.so|LoadModule headers_module modules/mod_headers.so|' /etc/apache2/httpd.conf \
     && sed -i 's|^#LoadModule cgid_module modules/mod_cgid.so|LoadModule cgid_module modules/mod_cgid.so|' /etc/apache2/httpd.conf \
     && sed -i 's|^#LoadModule proxy_module modules/mod_proxy.so|LoadModule proxy_module modules/mod_proxy.so|' /etc/apache2/httpd.conf \
     && sed -i 's|^#LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so|LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so|' /etc/apache2/httpd.conf \
     && sed -i 's|^#LoadModule alias_module modules/mod_alias.so|LoadModule alias_module modules/mod_alias.so|' /etc/apache2/httpd.conf \
     && sed -i 's|^ErrorLog "logs/error_log"|ErrorLog /proc/self/fd/2|' /etc/apache2/httpd.conf \
     && sed -i 's|^CustomLog "logs/access_log" common|CustomLog /proc/self/fd/1 combined|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|LogFormat "(.*)" combined|LogFormat "%{us}T %{X-Request-Id}i \1" combined|' /etc/apache2/httpd.conf \
+    && echo 'ErrorLogFormat "%{X-Request-Id}i [%l] [pid %P] %M"' >> /etc/apache2/httpd.conf \
     && (grep -q '^IncludeOptional /etc/apache2/conf-enabled/\*\.conf' /etc/apache2/httpd.conf || echo 'IncludeOptional /etc/apache2/conf-enabled/*.conf' >> /etc/apache2/httpd.conf) \
     && mkdir -p /etc/apache2/conf-enabled
 
@@ -190,7 +206,7 @@ EXPOSE 8080
 COPY --from=builder /usr/local/bin /usr/local/bin/
 COPY --from=builder /usr/local/lib /usr/local/lib/
 COPY --from=builder /usr/local/share/mapserver /usr/local/share/mapserver/
-COPY CHAINGUARD/MAPSERVER/runtime /
+COPY runtime /
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib \
     ORACLE_HOME=/usr/local/lib
@@ -202,7 +218,7 @@ RUN echo '/usr/local/lib' | tee -a /etc/ld.so.conf.d/oracle_instantclient.conf \
 ENV MS_DEBUGLEVEL=0 \
     MS_ERRORFILE=stderr \
     MAPSERVER_CONFIG_FILE=/etc/mapserver.conf \
-    MAPSERVER_BASE_PATH="" \
+    MAPSERVER_BASE_PATH="/mapserv" \
     MAX_REQUESTS_PER_PROCESS=1000 \
     MIN_PROCESSES=1 \
     MAX_PROCESSES=5 \

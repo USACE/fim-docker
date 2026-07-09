@@ -27,6 +27,11 @@ else
   # Define the S3 bucket and folder path.
   S3_BUCKET="s3://${AWS_S3_BUCKET:-}"
   S3_FOLDER="${AWS_DIR:-}"
+  AWS_PROFILE_ARG=()
+
+  if [ -n "${AWS_PROFILE:-}" ]; then
+    AWS_PROFILE_ARG=(--profile="${AWS_PROFILE}")
+  fi
 
   if [ -n "${AWS_SESSION_TOKEN}" ]; then
       export AWS_ACCESS_KEY_ID=$(echo -n "${AWS_ACCESS_KEY_ID}" | tr -d '\r\n ')
@@ -37,7 +42,7 @@ else
   if [ -n "${AWS_S3_BUCKET:-}" ] && [ -n "${AWS_DIR:-}" ]; then
     # Download the folder from S3.
     echo "Downloading ${S3_BUCKET}/${S3_FOLDER} to ${LOCAL_DIR}"
-    aws s3 sync "${S3_BUCKET}/${S3_FOLDER}" "${LOCAL_DIR}"
+    aws "${AWS_PROFILE_ARG[@]}" s3 sync "${S3_BUCKET}/${S3_FOLDER}" "${LOCAL_DIR}"
   else
     echo "AWS_S3_BUCKET or AWS_DIR not set; skipping AWS sync"
   fi

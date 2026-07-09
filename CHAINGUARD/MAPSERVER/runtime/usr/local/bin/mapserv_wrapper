@@ -2,9 +2,11 @@
 
 # Add the environment variables that were set when apache was started
 # shellcheck source=/dev/null
-. /tmp/init_env
+if [ -f /tmp/init_env ]; then
+    . /tmp/init_env
+fi
 
-# GDAL uses CWD to write temporary files. So we better be in a location writable by www-data.
+# GDAL uses CWD to write temporary files. Use a writable working directory.
 cd /tmp || exit 1
 
 if [ "${MAPSERVER_CATCH_SEGV}" = "1" ]; then
