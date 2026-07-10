@@ -3,7 +3,7 @@ Chainguard deployment completed as well as UBI
 Update-all-ecr and auto builds still need to be implemented
 
 Supported formats 
-
+```
 gdalinfo --formats
 Supported Formats: (ro:read-only, rw:read-write, +:write from scratch, u:update, v:virtual-I/O s:subdatasets)
   DERIVED -raster- (ro): Derived datasets using VRT pixel functions
@@ -219,3 +219,4 @@ Supported Formats: (ro:read-only, rw:read-write, +:write from scratch, u:update,
   AVCE00 -vector- (rov): Arc/Info E00 (ASCII) Coverage (*.e00)
   AIVector -vector- (ro): Artificial Intelligence powered vector driver
   HTTP -raster,vector- (ro): HTTP Fetching Wrapper
+```
