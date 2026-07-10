@@ -848,6 +848,8 @@ RUN apk update && apk add --no-cache \
     icu \
     libthrift \
     openssl \
+    xz \
+    bzip2 \
     tzdata
 
 # Copy all compiled artifacts from the builder stage

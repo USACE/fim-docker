@@ -3,7 +3,7 @@ ARG PLATFORM=linux/amd64
 # ==========================================
 # Stage 1: Build Environment
 # ==========================================
-FROM --platform=${PLATFORM} docker.io/library/gdal-chainguard:oci-only AS gdal
+FROM --platform=${PLATFORM} docker.io/library/gdal-chainguard:big  AS gdal
 FROM gdal AS builder
 
 SHELL ["/bin/sh", "-eux", "-c"]
@@ -165,6 +165,7 @@ RUN apk update && apk add \
     python3 \
     py3-lxml \
     aws-cli-2 \
+    geos-3.14 \
     curl \
     unzip \
     && mkdir --mode=0777 --parent ${APACHE_RUN_DIR} ${APACHE_LOCK_DIR} /etc/mapserver
@@ -188,14 +189,15 @@ RUN if [ "${BUILD_ENV}" = "dev" ]; then \
 RUN sed -i 's/^Listen 80$/Listen 8080/' /etc/apache2/httpd.conf \
     && sed -i 's/^User .*/User daemon/' /etc/apache2/httpd.conf \
     && sed -i 's/^Group .*/Group daemon/' /etc/apache2/httpd.conf \
-    && sed -i 's|^#LoadModule headers_module modules/mod_headers.so|LoadModule headers_module modules/mod_headers.so|' /etc/apache2/httpd.conf \
-    && sed -i 's|^#LoadModule cgid_module modules/mod_cgid.so|LoadModule cgid_module modules/mod_cgid.so|' /etc/apache2/httpd.conf \
-    && sed -i 's|^#LoadModule proxy_module modules/mod_proxy.so|LoadModule proxy_module modules/mod_proxy.so|' /etc/apache2/httpd.conf \
-    && sed -i 's|^#LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so|LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so|' /etc/apache2/httpd.conf \
-    && sed -i 's|^#LoadModule alias_module modules/mod_alias.so|LoadModule alias_module modules/mod_alias.so|' /etc/apache2/httpd.conf \
-    && sed -i 's|^ErrorLog "logs/error_log"|ErrorLog /proc/self/fd/2|' /etc/apache2/httpd.conf \
-    && sed -i 's|^CustomLog "logs/access_log" common|CustomLog /proc/self/fd/1 combined|' /etc/apache2/httpd.conf \
-    && sed -i -E 's|LogFormat "(.*)" combined|LogFormat "%{us}T %{X-Request-Id}i \1" combined|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*#?[[:space:]]*LoadModule headers_module modules/mod_headers\.so[[:space:]]*$|LoadModule headers_module modules/mod_headers.so|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*#?[[:space:]]*LoadModule cgid_module modules/mod_cgid\.so[[:space:]]*$|LoadModule cgid_module modules/mod_cgid.so|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*#?[[:space:]]*LoadModule rewrite_module modules/mod_rewrite\.so[[:space:]]*$|LoadModule rewrite_module modules/mod_rewrite.so|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*#?[[:space:]]*LoadModule proxy_module modules/mod_proxy\.so[[:space:]]*$|LoadModule proxy_module modules/mod_proxy.so|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*#?[[:space:]]*LoadModule proxy_fcgi_module modules/mod_proxy_fcgi\.so[[:space:]]*$|LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*#?[[:space:]]*LoadModule alias_module modules/mod_alias\.so[[:space:]]*$|LoadModule alias_module modules/mod_alias.so|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*ErrorLog[[:space:]]+.*$|ErrorLog /proc/self/fd/2|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*CustomLog[[:space:]]+/proc/self/fd/1[[:space:]]+[[:graph:]]+[[:space:]]*$|CustomLog /proc/self/fd/1 combined|' /etc/apache2/httpd.conf \
+    && sed -i -E 's|^[[:space:]]*LogFormat "([^"]*)" combined[[:space:]]*$|LogFormat "%{us}T %{X-Request-Id}i \1" combined|' /etc/apache2/httpd.conf \
     && echo 'ErrorLogFormat "%{X-Request-Id}i [%l] [pid %P] %M"' >> /etc/apache2/httpd.conf \
     && (grep -q '^IncludeOptional /etc/apache2/conf-enabled/\*\.conf' /etc/apache2/httpd.conf || echo 'IncludeOptional /etc/apache2/conf-enabled/*.conf' >> /etc/apache2/httpd.conf) \
     && mkdir -p /etc/apache2/conf-enabled
@@ -218,7 +220,7 @@ RUN echo '/usr/local/lib' | tee -a /etc/ld.so.conf.d/oracle_instantclient.conf \
 ENV MS_DEBUGLEVEL=0 \
     MS_ERRORFILE=stderr \
     MAPSERVER_CONFIG_FILE=/etc/mapserver.conf \
-    MAPSERVER_BASE_PATH="/mapserv" \
+    MAPSERVER_BASE_PATH="/" \
     MAX_REQUESTS_PER_PROCESS=1000 \
     MIN_PROCESSES=1 \
     MAX_PROCESSES=5 \
