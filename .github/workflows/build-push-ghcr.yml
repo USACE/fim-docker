@@ -1,0 +1,84 @@
+name: Build and Push All Docker Images to GHCR
+
+on:
+#   push:
+#     branches:
+#       - main
+#       - master
+#     paths:
+#       - CHAINGUARD/**
+#       - UBI/**
+#       - UBUNTU/**
+#       - .github/workflows/build-push-ghcr.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-all-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: chainguard-gdal
+            dockerfile: CHAINGUARD/GDAL/Dockerfile
+          - image: chainguard-mapserver
+            dockerfile: CHAINGUARD/MAPSERVER/Dockerfile
+          - image: ubi-gdal
+            dockerfile: UBI/GDAL/Dockerfile
+          - image: ubi-gdal-oci-large
+            dockerfile: UBI/GDAL-OCI-LARGE/Dockerfile
+          - image: ubi-gdal-oci-mapserver
+            dockerfile: UBI/GDAL-OCI-MAPSERVER/Dockerfile
+          - image: ubi-gdal-oci-small
+            dockerfile: UBI/GDAL-OCI-SMALL/Dockerfile
+          - image: ubuntu-gdal-oci-mapserver
+            dockerfile: UBUNTU/GDAL-OCI-MAPSERVER/Dockerfile
+          - image: ubuntu-gdal-oci-ubuntu-full
+            dockerfile: UBUNTU/GDAL-OCI-UBUNTU-FULL/Dockerfile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute lowercase owner
+        id: vars
+        shell: bash
+        run: |
+          echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ steps.vars.outputs.owner_lc }}/${{ matrix.image }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
