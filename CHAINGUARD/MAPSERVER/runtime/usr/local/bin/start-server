@@ -17,6 +17,11 @@ ${GET_ENV} | sed -e 's/.\+/export "\0"/' > /tmp/init_env
 # Define the local directory used by MapServer.
 LOCAL_DIR="/etc/mapserver"
 SMOKE_TEST_MODE="${SMOKE_TEST:-0}"
+MAP_TEMP_DIR="${MAPSCRIPT_TEMP_MAP_DIR:-/etc/mapserver/maps}"
+WORKSPACE_ROOT="${MAPSERVER_WORKSPACE_ROOT:-/workspaces/fim-docker/CHAINGUARD/MAPSERVER}"
+MAP_DEPLOY_ENV="${MAP_DEPLOY_ENV:-${MAP_ENV:-${FIM_ENV:-dev}}}"
+MAP_RENDERED_BASE="${MAP_RENDERED_BASE:-${WORKSPACE_ROOT}/map_testing/rendered}"
+USE_RENDERED_MAPS="${USE_RENDERED_MAPS:-1}"
 
 # Create the local directory if it doesn't exist.
 mkdir -p "${LOCAL_DIR}"
@@ -42,13 +47,32 @@ else
   if [ -n "${AWS_S3_BUCKET:-}" ] && [ -n "${AWS_DIR:-}" ]; then
     # Download the folder from S3.
     echo "Downloading ${S3_BUCKET}/${S3_FOLDER} to ${LOCAL_DIR}"
-    aws "${AWS_PROFILE_ARG[@]}" s3 sync "${S3_BUCKET}/${S3_FOLDER}" "${LOCAL_DIR}"
+    aws s3 sync "${S3_BUCKET}/${S3_FOLDER}" "${LOCAL_DIR}" "${AWS_PROFILE_ARG[@]}" 
   else
     echo "AWS_S3_BUCKET or AWS_DIR not set; skipping AWS sync"
   fi
 
   # Create include files based on fim_* environment variables.
   ${GET_ENV} | grep -i '^fim_' | sed -e 's/^[Ff][Ii][Mm]_\(.*\)=\(.*\)$/config \1 "\2"/' > /etc/mapserver/include/aws.inc || true
+fi
+
+# If rendered map_testing output exists, prefer it over downloaded maps.
+RENDERED_ENV_MAP_DIR="${MAP_RENDERED_BASE}/${MAP_DEPLOY_ENV}/maps"
+if [ "${USE_RENDERED_MAPS}" = "1" ] || [ "${USE_RENDERED_MAPS}" = "true" ] || [ "${USE_RENDERED_MAPS}" = "TRUE" ]; then
+  if [ -d "${RENDERED_ENV_MAP_DIR}" ]; then
+    echo "Using rendered maps from ${RENDERED_ENV_MAP_DIR}"
+    mkdir -p "${LOCAL_DIR}/maps"
+    rm -rf "${LOCAL_DIR}/maps/layers"
+    find "${LOCAL_DIR}/maps" -maxdepth 1 -type f -name '*.map' -delete || true
+    cp -R "${RENDERED_ENV_MAP_DIR}"/. "${LOCAL_DIR}/maps/"
+  else
+    echo "Rendered maps not found at ${RENDERED_ENV_MAP_DIR}; using existing ${LOCAL_DIR}/maps"
+  fi
+fi
+
+# AWS sync can reset directory metadata. Enforce writable temp-map dir after sync.
+if [ -d "${MAP_TEMP_DIR}" ]; then
+  chmod 777 "${MAP_TEMP_DIR}" || true
 fi
 
 # Keep log permissions consistent for local smoke tests.

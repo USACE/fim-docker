@@ -9,6 +9,29 @@ fi
 # GDAL uses CWD to write temporary files. Use a writable working directory.
 cd /tmp || exit 1
 
+# Use MapScript gateway only for requests that ask for dynamic class colors.
+USE_MAPSCRIPT=0
+if [ -n "${QUERY_STRING:-}" ]; then
+    case "${QUERY_STRING}" in
+        *custom_color_1=*|*custom_color_2=*|*custom_color_3=*|*custom_color_4=*|\
+        *custom_color_1_r=*|*custom_color_1_g=*|*custom_color_1_b=*|\
+        *custom_color_2_r=*|*custom_color_2_g=*|*custom_color_2_b=*|\
+        *custom_color_3_r=*|*custom_color_3_g=*|*custom_color_3_b=*|\
+        *custom_color_4_r=*|*custom_color_4_g=*|*custom_color_4_b=*|\
+        *c1r=*|*c1g=*|*c1b=*|*c2r=*|*c2g=*|*c2b=*|*c3r=*|*c3g=*|*c3b=*|*c4r=*|*c4g=*|*c4b=*)
+            USE_MAPSCRIPT=1
+            ;;
+    esac
+fi
+
+if [ "${USE_MAPSCRIPT}" = "1" ]; then
+    if /usr/bin/python3 -c 'import mapscript' >/dev/null 2>&1; then
+        exec /usr/local/bin/mapserv_mapscript_gateway.py "$@"
+    fi
+
+    echo "mapserv_wrapper: mapscript module unavailable; falling back to mapserv" >&2
+fi
+
 if [ "${MAPSERVER_CATCH_SEGV}" = "1" ]; then
     exec catchsegv /usr/local/bin/mapserv "$@"
 else

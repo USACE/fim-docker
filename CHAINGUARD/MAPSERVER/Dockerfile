@@ -40,7 +40,9 @@ RUN apk update && apk add \
     cairo-dev \
     libxml2-dev \
     libxslt-dev \
-    python-3.12-dev \
+    python3 \
+    python3-dev \
+    py3-pip \
     py3-lxml \
     protobuf-c-dev \
     protobuf-c-compiler \
@@ -107,6 +109,7 @@ RUN if [ "${WITH_ORACLE}" = "ON" ]; then export ORACLE_HOME=/usr/local/lib; fi; 
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DCMAKE_PREFIX_PATH="/usr/local/lib" \
+        -DPython_EXECUTABLE=/usr/bin/python3 \
         -DORACLE_INCLUDE_DIR=/usr/local/lib/include \
         -DWITH_FCGI=0 \
         -DWITH_CLIENT_WMS=1 \
@@ -115,6 +118,7 @@ RUN if [ "${WITH_ORACLE}" = "ON" ]; then export ORACLE_HOME=/usr/local/lib; fi; 
         -DWITH_KML=1 \
         -DWITH_SOS=1 \
         -DWITH_XMLMAPFILE=1 \
+        -DWITH_PYTHON=1 \
         -DWITH_CAIRO=1 \
         -DWITH_RSVG=1 \
         -DUSE_PROJ=1 \
@@ -123,6 +127,9 @@ RUN if [ "${WITH_ORACLE}" = "ON" ]; then export ORACLE_HOME=/usr/local/lib; fi; 
         -DWITH_ORACLESPATIAL=${WITH_ORACLE}
 
 RUN ninja && ninja install
+
+# Validate that Python MapScript is importable in the build image.
+RUN python3 -c 'import os, sys; mm = f"{sys.version_info.major}.{sys.version_info.minor}"; [sys.path.insert(0, p) for p in (f"/usr/local/lib/python{mm}/site-packages", f"/usr/local/lib/python{mm}/dist-packages") if os.path.isdir(p) and p not in sys.path]; import mapscript; print("mapscript import OK")'
 
 # ==========================================
 # Stage 2: Runtime Runner Environment
@@ -212,6 +219,17 @@ COPY runtime /
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib \
     ORACLE_HOME=/usr/local/lib
+
+# Wolfi Python uses /usr/lib/pythonX.Y/site-packages by default.
+# Add /usr/local Python package directories so mapscript is importable.
+RUN PY_MM="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')" \
+    && mkdir -p "/usr/lib/python${PY_MM}/site-packages" \
+    && { \
+        echo "/usr/local/lib/python${PY_MM}/site-packages"; \
+        echo "/usr/local/lib/python${PY_MM}/dist-packages"; \
+    } > "/usr/lib/python${PY_MM}/site-packages/_mapserver_local_paths.pth"
+
+RUN python3 -c 'import mapscript; print("runner mapscript import OK")'
 
 RUN echo '/usr/local/lib' | tee -a /etc/ld.so.conf.d/oracle_instantclient.conf \
     && ldconfig
