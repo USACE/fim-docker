@@ -29,20 +29,20 @@ jobs:
         include:
           - image: chainguard-gdal
             dockerfile: CHAINGUARD/GDAL/Dockerfile
-          - image: chainguard-mapserver
-            dockerfile: CHAINGUARD/MAPSERVER/Dockerfile
-          - image: ubi-gdal
-            dockerfile: UBI/GDAL/Dockerfile
-          - image: ubi-gdal-oci-large
-            dockerfile: UBI/GDAL-OCI-LARGE/Dockerfile
-          - image: ubi-gdal-oci-mapserver
-            dockerfile: UBI/GDAL-OCI-MAPSERVER/Dockerfile
-          - image: ubi-gdal-oci-small
-            dockerfile: UBI/GDAL-OCI-SMALL/Dockerfile
-          - image: ubuntu-gdal-oci-mapserver
-            dockerfile: UBUNTU/GDAL-OCI-MAPSERVER/Dockerfile
-          - image: ubuntu-gdal-oci-ubuntu-full
-            dockerfile: UBUNTU/GDAL-OCI-UBUNTU-FULL/Dockerfile
+          # - image: chainguard-mapserver
+          #   dockerfile: CHAINGUARD/MAPSERVER/Dockerfile
+          # - image: ubi-gdal
+          #   dockerfile: UBI/GDAL/Dockerfile
+          # - image: ubi-gdal-oci-large
+          #   dockerfile: UBI/GDAL-OCI-LARGE/Dockerfile
+          # - image: ubi-gdal-oci-mapserver
+          #   dockerfile: UBI/GDAL-OCI-MAPSERVER/Dockerfile
+          # - image: ubi-gdal-oci-small
+          #   dockerfile: UBI/GDAL-OCI-SMALL/Dockerfile
+          # - image: ubuntu-gdal-oci-mapserver
+          #   dockerfile: UBUNTU/GDAL-OCI-MAPSERVER/Dockerfile
+          # - image: ubuntu-gdal-oci-ubuntu-full
+          #   dockerfile: UBUNTU/GDAL-OCI-UBUNTU-FULL/Dockerfile
 
     steps:
       - uses: actions/checkout@v4
