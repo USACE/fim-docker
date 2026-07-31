@@ -28,21 +28,29 @@ jobs:
       matrix:
         include:
           - image: chainguard-gdal
-            dockerfile: CHAINGUARD/GDAL/Dockerfile
+            context: CHAINGUARD/GDAL
+            dockerfile: Dockerfile
           - image: chainguard-mapserver
-            dockerfile: CHAINGUARD/MAPSERVER/Dockerfile
+            context: CHAINGUARD/MAPSERVER
+            dockerfile: Dockerfile
           # - image: ubi-gdal
-          #   dockerfile: UBI/GDAL/Dockerfile
+          #   context: UBI/GDAL
+          #   dockerfile: Dockerfile
           # - image: ubi-gdal-oci-large
-          #   dockerfile: UBI/GDAL-OCI-LARGE/Dockerfile
+          #   context: UBI/GDAL-OCI-LARGE
+          #   dockerfile: Dockerfile
           # - image: ubi-gdal-oci-mapserver
-          #   dockerfile: UBI/GDAL-OCI-MAPSERVER/Dockerfile
+          #   context: UBI/GDAL-OCI-MAPSERVER
+          #   dockerfile: Dockerfile
           # - image: ubi-gdal-oci-small
-          #   dockerfile: UBI/GDAL-OCI-SMALL/Dockerfile
+          #   context: UBI/GDAL-OCI-SMALL
+          #   dockerfile: Dockerfile
           # - image: ubuntu-gdal-oci-mapserver
-          #   dockerfile: UBUNTU/GDAL-OCI-MAPSERVER/Dockerfile
+          #   context: UBUNTU/GDAL-OCI-MAPSERVER
+          #   dockerfile: Dockerfile
           # - image: ubuntu-gdal-oci-ubuntu-full
-          #   dockerfile: UBUNTU/GDAL-OCI-UBUNTU-FULL/Dockerfile
+          #   context: UBUNTU/GDAL-OCI-UBUNTU-FULL
+          #   dockerfile: Dockerfile
 
     steps:
       - uses: actions/checkout@v4
@@ -76,8 +84,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ${{ matrix.dockerfile }}
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           push: true
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
