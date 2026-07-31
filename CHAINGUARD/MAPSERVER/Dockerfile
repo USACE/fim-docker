@@ -3,7 +3,7 @@ ARG PLATFORM=linux/amd64
 # ==========================================
 # Stage 1: Build Environment
 # ==========================================
-FROM --platform=${PLATFORM} docker.io/library/gdal-chainguard:big  AS gdal
+FROM --platform=${PLATFORM} ghcr.io/usace/chainguard-gdal:latest  AS gdal
 FROM gdal AS builder
 
 SHELL ["/bin/sh", "-eux", "-c"]

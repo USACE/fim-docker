@@ -29,8 +29,8 @@ jobs:
         include:
           - image: chainguard-gdal
             dockerfile: CHAINGUARD/GDAL/Dockerfile
-          # - image: chainguard-mapserver
-          #   dockerfile: CHAINGUARD/MAPSERVER/Dockerfile
+          - image: chainguard-mapserver
+            dockerfile: CHAINGUARD/MAPSERVER/Dockerfile
           # - image: ubi-gdal
           #   dockerfile: UBI/GDAL/Dockerfile
           # - image: ubi-gdal-oci-large
