@@ -30,9 +30,19 @@ jobs:
           - image: chainguard-gdal
             context: CHAINGUARD/GDAL
             dockerfile: Dockerfile
+            build_args: ""
+            extra_tag: ""
+          - image: chainguard-gdal
+            context: CHAINGUARD/GDAL
+            dockerfile: Dockerfile
+            build_args: |
+              ENABLE_OCI=OFF
+            extra_tag: no-oci
           - image: chainguard-mapserver
             context: CHAINGUARD/MAPSERVER
             dockerfile: Dockerfile
+            build_args: ""
+            extra_tag: ""
           # - image: ubi-gdal
           #   context: UBI/GDAL
           #   dockerfile: Dockerfile
@@ -88,5 +98,8 @@ jobs:
           file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           push: true
           platforms: linux/amd64
-          tags: ${{ steps.meta.outputs.tags }}
+          build-args: ${{ matrix.build_args }}
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+            ${{ matrix.extra_tag != '' && format('ghcr.io/{0}/{1}:{2}', steps.vars.outputs.owner_lc, matrix.image, matrix.extra_tag) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
