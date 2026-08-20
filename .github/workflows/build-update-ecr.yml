@@ -24,7 +24,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 concurrency:
@@ -184,12 +184,97 @@ jobs:
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image
+      - name: Build image locally for scan
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
           no-cache: true
           platforms: linux/amd64
-          push: true
-          tags: ${{ matrix.aws_account_id }}.dkr.ecr.${{ matrix.aws_region }}.amazonaws.com/${{ matrix.image }}:${{ matrix.tag }}
+          push: false
+          load: true
+          tags: ${{ matrix.image }}:${{ matrix.tag }}
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/html.tpl
+
+      - name: Scan with Trivy (Table)
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ matrix.tag }}
+        run: |
+          trivy image --platform linux/amd64 --exit-code 0 --format table --severity CRITICAL,HIGH ${IMAGE_NAME}:${IMAGE_TAG}
+
+      - name: Scan with Trivy (JSON)
+        id: scan_with_trivy_json
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ matrix.tag }}
+        run: |
+          mkdir -p trivy-reports
+          trivy image --platform linux/amd64 --exit-code 1 --severity CRITICAL,HIGH --format json -o trivy-reports/${IMAGE_NAME}-${IMAGE_TAG}-trivy-report.json ${IMAGE_NAME}:${IMAGE_TAG}
+
+      - name: Scan with Trivy (HTML)
+        id: scan_with_trivy_html
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ matrix.tag }}
+        run: |
+          trivy image --platform linux/amd64 --exit-code 0 --severity CRITICAL,HIGH --format template --template "@/tmp/html.tpl" -o trivy-reports/${IMAGE_NAME}-${IMAGE_TAG}-trivy-report.html ${IMAGE_NAME}:${IMAGE_TAG}
+
+      - name: Generate Markdown Summary from Trivy JSON
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ matrix.tag }}
+        run: |
+          REPORT_PATH=trivy-reports/${IMAGE_NAME}-${IMAGE_TAG}-trivy-report.json
+          SUMMARY=trivy-reports/summary.md
+
+          if jq -e '.Results | all(.Vulnerabilities == null or .Vulnerabilities == [])' "$REPORT_PATH" > /dev/null; then
+            echo "### Trivy Security Scan Summary" > "$SUMMARY"
+            echo "" >> "$SUMMARY"
+            echo "- No vulnerabilities found." >> "$SUMMARY"
+          else
+            CRIT=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' "$REPORT_PATH")
+            HIGH=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity == "HIGH")] | length' "$REPORT_PATH")
+            OTHER=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity != "CRITICAL" and .Severity != "HIGH")] | length' "$REPORT_PATH")
+            echo "### Trivy Security Scan Summary" > "$SUMMARY"
+            echo "" >> "$SUMMARY"
+            echo "- Critical: $CRIT" >> "$SUMMARY"
+            echo "- High: $HIGH" >> "$SUMMARY"
+            echo "- Other (Medium/Low/Unknown): $OTHER" >> "$SUMMARY"
+          fi
+
+      - name: Upload Trivy Reports to GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && always()
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ matrix.tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: trivy-${{ matrix.environment }}-${{ matrix.image }}-${{ github.sha }}
+          name: '${{ matrix.environment }} ${{ matrix.image }} ${{ matrix.tag }} Container Security Scan'
+          body_path: trivy-reports/summary.md
+          files: |
+            trivy-reports/${{ matrix.image }}-${{ matrix.tag }}-trivy-report.json
+            trivy-reports/${{ matrix.image }}-${{ matrix.tag }}-trivy-report.html
+
+      - name: Block Push to Amazon ECR if Vulnerabilities Found
+        if: steps.scan_with_trivy_json.outcome == 'failure'
+        run: |
+          echo "Critical or High vulnerabilities detected. Blocking push to Amazon ECR."
+          exit 1
+
+      - name: Tag and Push Image to Amazon ECR
+        if: steps.scan_with_trivy_json.outcome == 'success'
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ matrix.tag }}
+          FULL_IMAGE_NAME: ${{ matrix.aws_account_id }}.dkr.ecr.${{ matrix.aws_region }}.amazonaws.com/${{ matrix.image }}:${{ matrix.tag }}
+        run: |
+          docker tag $IMAGE_NAME:$IMAGE_TAG $FULL_IMAGE_NAME
+          docker push $FULL_IMAGE_NAME

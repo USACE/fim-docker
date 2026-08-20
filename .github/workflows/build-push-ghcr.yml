@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 concurrency:
@@ -96,10 +96,104 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.context }}/${{ matrix.dockerfile }}
-          push: true
+          push: false
+          load: true
           platforms: linux/amd64
           build-args: ${{ matrix.build_args }}
-          tags: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ matrix.extra_tag != '' && format('ghcr.io/{0}/{1}:{2}', steps.vars.outputs.owner_lc, matrix.image, matrix.extra_tag) || '' }}
+          tags: ${{ matrix.image }}:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/html.tpl
+
+      - name: Scan with Trivy (Table)
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          trivy image --platform linux/amd64 --exit-code 0 --format table --severity CRITICAL,HIGH ${IMAGE_NAME}:${IMAGE_TAG}
+
+      - name: Scan with Trivy (JSON)
+        id: scan_with_trivy_json
+        continue-on-error: true
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          mkdir -p trivy-reports
+          trivy image --platform linux/amd64 --exit-code 1 --severity CRITICAL,HIGH --format json -o trivy-reports/${IMAGE_NAME}-${IMAGE_TAG}-trivy-report.json ${IMAGE_NAME}:${IMAGE_TAG}
+
+      - name: Scan with Trivy (HTML)
+        id: scan_with_trivy_html
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          trivy image --platform linux/amd64 --exit-code 0 --severity CRITICAL,HIGH --format template --template "@/tmp/html.tpl" -o trivy-reports/${IMAGE_NAME}-${IMAGE_TAG}-trivy-report.html ${IMAGE_NAME}:${IMAGE_TAG}
+
+      - name: Generate Markdown Summary from Trivy JSON
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          REPORT_PATH=trivy-reports/${IMAGE_NAME}-${IMAGE_TAG}-trivy-report.json
+          SUMMARY=trivy-reports/summary.md
+
+          if jq -e '.Results | all(.Vulnerabilities == null or .Vulnerabilities == [])' "$REPORT_PATH" > /dev/null; then
+            echo "### Trivy Security Scan Summary" > "$SUMMARY"
+            echo "" >> "$SUMMARY"
+            echo "- No vulnerabilities found." >> "$SUMMARY"
+          else
+            CRIT=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' "$REPORT_PATH")
+            HIGH=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity == "HIGH")] | length' "$REPORT_PATH")
+            OTHER=$(jq '[.Results[].Vulnerabilities[]? | select(.Severity != "CRITICAL" and .Severity != "HIGH")] | length' "$REPORT_PATH")
+            echo "### Trivy Security Scan Summary" > "$SUMMARY"
+            echo "" >> "$SUMMARY"
+            echo "- Critical: $CRIT" >> "$SUMMARY"
+            echo "- High: $HIGH" >> "$SUMMARY"
+            echo "- Other (Medium/Low/Unknown): $OTHER" >> "$SUMMARY"
+          fi
+
+      - name: Upload Trivy Reports to GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && always()
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          IMAGE_TAG: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: trivy-${{ matrix.image }}-${{ github.sha }}
+          name: '${{ matrix.image }} ${{ github.sha }} Container Security Scan'
+          body_path: trivy-reports/summary.md
+          files: |
+            trivy-reports/${{ matrix.image }}-${{ github.sha }}-trivy-report.json
+            trivy-reports/${{ matrix.image }}-${{ github.sha }}-trivy-report.html
+
+      - name: Block Push to GitHub Container Registry if Vulnerabilities Found
+        if: steps.scan_with_trivy_json.outcome == 'failure'
+        run: |
+          echo "Critical or High vulnerabilities detected. Blocking push to GitHub Container Registry."
+          exit 1
+
+      - name: Tag and Push Image to GitHub Container Registry
+        if: steps.scan_with_trivy_json.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_NAME='${{ matrix.image }}'
+          IMAGE_TAG='${{ github.sha }}'
+          TAGS='${{ steps.meta.outputs.tags }}'
+
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] || continue
+            docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "$tag"
+            docker push "$tag"
+          done <<< "$TAGS"
+
+          if [[ -n '${{ matrix.extra_tag }}' ]]; then
+            extra_tag="ghcr.io/${{ steps.vars.outputs.owner_lc }}/${{ matrix.image }}:${{ matrix.extra_tag }}"
+            docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "$extra_tag"
+            docker push "$extra_tag"
+          fi
