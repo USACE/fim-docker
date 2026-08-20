@@ -27,17 +27,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: chainguard-gdal
-            context: CHAINGUARD/GDAL
-            dockerfile: Dockerfile
-            build_args: ""
-            extra_tag: ""
-          - image: chainguard-gdal
-            context: CHAINGUARD/GDAL
-            dockerfile: Dockerfile
-            build_args: |
-              ENABLE_OCI=OFF
-            extra_tag: no-oci
           - image: chainguard-mapserver
             context: CHAINGUARD/MAPSERVER
             dockerfile: Dockerfile
