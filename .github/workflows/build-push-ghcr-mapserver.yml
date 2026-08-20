@@ -1,4 +1,4 @@
-name: Build and Push All Docker Images to GHCR
+name: Build and Push Mapserver Docker Images to GHCR
 
 on:
 #   push:
