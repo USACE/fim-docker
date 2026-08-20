@@ -9,7 +9,7 @@ FROM gdal AS builder
 SHELL ["/bin/sh", "-eux", "-c"]
 
 # Set Oracle and Library System Variables
-ENV ORACLE_VERSION=21.15.0.0.0 \
+ENV ORACLE_VERSION=21.20.0.0.0 \
     ORACLE_BASE=/usr/local/lib \
     LD_LIBRARY_PATH=/usr/local/lib:/usr/lib \
     ORACLE_HOME=/usr/local/lib
