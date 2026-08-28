@@ -38,11 +38,11 @@ jobs:
             build_args: |
               ENABLE_OCI=OFF
             extra_tag: no-oci
-          - image: chainguard-mapserver
-            context: CHAINGUARD/MAPSERVER
-            dockerfile: Dockerfile
-            build_args: ""
-            extra_tag: ""
+          # - image: chainguard-mapserver
+          #   context: CHAINGUARD/MAPSERVER
+          #   dockerfile: Dockerfile
+          #   build_args: ""
+          #   extra_tag: ""
           # - image: ubi-gdal
           #   context: UBI/GDAL
           #   dockerfile: Dockerfile
