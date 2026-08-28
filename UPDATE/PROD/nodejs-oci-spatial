@@ -1,4 +1,0 @@
-ARG platform=linux/amd64 
-FROM --platform=${platform} 648157167324.dkr.ecr.us-gov-west-1.amazonaws.com/nodejs-oci-spatial:release
-
-RUN apt-get update -y && apt-get upgrade -y && apt-get install -y

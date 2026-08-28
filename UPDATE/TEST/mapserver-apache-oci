@@ -1,4 +1,0 @@
-ARG platform=linux/amd64 
-FROM --platform=${platform} 276847049069.dkr.ecr.us-gov-west-1.amazonaws.com/mapserver-apache-oci:release
-
-RUN  apt-get update -y && apt-get upgrade -y && apt-get install -y

@@ -1,11 +1,4 @@
 ARG platform=linux/amd64 
-FROM --platform=${platform} 038611608639.dkr.ecr.us-east-1.amazonaws.com/esd-download-api:release
+FROM --platform=${platform} 648157167324.dkr.ecr.us-gov-west-1.amazonaws.com/esd-download-api:test
 
-RUN mkdir -p /tmp && \
- echo "**** install runtime packages ****" && \
- apt-get update
-
- RUN echo "**** clean up ****" && \
-  apt-get autoremove -y ; \
-  apt-get clean ; \
-  rm -rf /var/lib/apt/lists/partial/* /tmp/* /var/tmp/*
+RUN microdnf update -y && microdnf upgrade -y

@@ -13,10 +13,13 @@ for directory in "${directories[@]}"; do
   fi
   environment=$(basename "$directory")
   repo="038611608639.dkr.ecr.us-east-1.amazonaws.com"
+  tag="prod"
   if [ "$environment" == "PROD" ]; then
+    tag="prod"
     repo="648157167324.dkr.ecr.us-gov-west-1.amazonaws.com"
   fi
   if [ "$environment" == "TEST" ]; then
+    tag="test"
     repo="276847049069.dkr.ecr.us-gov-west-1.amazonaws.com"
   fi
   for file in "$directory"/*; do
@@ -27,18 +30,18 @@ for directory in "${directories[@]}"; do
           echo "$file"
           echo "$xfilename"
           # echo 038611608639.dkr.ecr.us-east-1.amazonaws.com/$xfilename:release
-          echo $repo/$xfilename:test
+          echo $repo/$xfilename:$tag
+          # docker build -t $xfilename -f $file --no-cache .
+          # docker tag $xfilename $repo/$xfilename:$tag
+          # docker push $repo/$xfilename:$tag
+      else
+          echo "$file"
+          echo "$xfilename"
+          # echo 038611608639.dkr.ecr.us-east-1.amazonaws.com/$xfilename:release
+          echo $repo/$xfilename:release
           docker build -t $xfilename -f $file --no-cache .
-          docker tag $xfilename $repo/$xfilename:test
-          docker push $repo/$xfilename:test
-      # else
-      #     echo "$file"
-      #     echo "$xfilename"
-      #     # echo 038611608639.dkr.ecr.us-east-1.amazonaws.com/$xfilename:release
-      #     echo $repo/$xfilename:release
-      #     docker build -t $xfilename -f $file --no-cache .
-      #     docker tag $xfilename $repo/$xfilename:release
-      #     docker push $repo/$xfilename:release
+          docker tag $xfilename $repo/$xfilename:release
+          docker push $repo/$xfilename:release
       fi
     fi
   done

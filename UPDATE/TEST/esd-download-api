@@ -1,4 +1,4 @@
 ARG platform=linux/amd64 
 FROM --platform=${platform} 276847049069.dkr.ecr.us-gov-west-1.amazonaws.com/esd-download-api:test
 
-RUN microdnf update -y
+RUN microdnf update -y && microdnf upgrade -y
