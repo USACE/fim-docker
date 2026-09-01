@@ -40,14 +40,29 @@ RUN apk update && apk add \
     cairo-dev \
     libxml2-dev \
     libxslt-dev \
-    python3 \
-    python3-dev \
     py3-pip \
     py3-lxml \
     protobuf-c-dev \
     protobuf-c-compiler \
     harfbuzz-dev \
     && ln -sf /usr/lib/ninja-build/bin/ninja /usr/bin/ninja
+
+# Provide Python development headers/config for CMake without replacing base Python runtime.
+RUN PY_MM="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')" \
+        && PKG="python-${PY_MM}-base-dev" \
+        && mkdir -p /tmp/python-dev-apk /tmp/python-dev-extract \
+        && cd /tmp/python-dev-apk \
+        && apk fetch --no-cache "${PKG}" \
+        && for p in *.apk; do tar -xzf "$p" -C /tmp/python-dev-extract; done \
+        && cp -R "/tmp/python-dev-extract/usr/include/python${PY_MM}/." "/usr/include/python${PY_MM}/" \
+        && if [ -d "/tmp/python-dev-extract/usr/lib/python${PY_MM}/config-${PY_MM}-x86_64-linux-gnu" ]; then \
+                 mkdir -p "/usr/lib/python${PY_MM}/config-${PY_MM}-x86_64-linux-gnu" \
+                 && cp -R "/tmp/python-dev-extract/usr/lib/python${PY_MM}/config-${PY_MM}-x86_64-linux-gnu/." "/usr/lib/python${PY_MM}/config-${PY_MM}-x86_64-linux-gnu/"; \
+             fi \
+        && if [ -f "/usr/lib/libpython${PY_MM}.so.1.0" ] && [ ! -e "/usr/lib/libpython${PY_MM}.so" ]; then \
+                 ln -s "/usr/lib/libpython${PY_MM}.so.1.0" "/usr/lib/libpython${PY_MM}.so"; \
+             fi \
+        && rm -rf /tmp/python-dev-apk /tmp/python-dev-extract
 
 ARG MAPSERVER_BRANCH=branch-8-6
 ARG MAPSERVER_REPO=https://github.com/mapserver/mapserver
@@ -168,18 +183,32 @@ RUN apk update && apk add \
     protobuf-c \
     libaio \
     libpcre2-posix-3 \
-    glibc \
-    python3 \
     py3-lxml \
-    aws-cli-2 \
+    aws-cli-v2 \
     geos-3.14 \
     curl \
     unzip \
     && mkdir --mode=0777 --parent ${APACHE_RUN_DIR} ${APACHE_LOCK_DIR} /etc/mapserver
 
+# Prefer the bundled AWS CLI v2 launcher and expose a stable /usr/bin/aws path.
+RUN ln -sf /usr/lib/aws-cli/aws /usr/bin/aws
+
+# Keep boto3 aligned to the runtime Python minor version (e.g. py3.13-boto3).
+RUN PY_MM="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')" \
+    && apk add --no-cache "py${PY_MM}-boto3"
+
 # Development Environment Dependencies installation (if BUILD_ENV=dev)
 RUN if [ "${BUILD_ENV}" = "dev" ]; then \
-        apk add \
+        PY_MM="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')" \
+        && PKG="python-${PY_MM}-base-dev" \
+        && mkdir -p /tmp/python-dev-apk /tmp/python-dev-extract \
+        && cd /tmp/python-dev-apk \
+        && apk fetch --no-cache "${PKG}" \
+        && for p in *.apk; do tar -xzf "$p" -C /tmp/python-dev-extract; done \
+        && cp -R "/tmp/python-dev-extract/usr/include/python${PY_MM}/." "/usr/include/python${PY_MM}/" \
+        && rm -rf /tmp/python-dev-apk /tmp/python-dev-extract \
+        && cd / \
+        && apk add \
             py3-pip \
             openssh-client \
             openssh-keygen \
@@ -187,9 +216,8 @@ RUN if [ "${BUILD_ENV}" = "dev" ]; then \
             krb5-libs \
             krb5-dev \
             build-base \
-            python3-dev \
         && python3 -m pip install --no-cache-dir --break-system-packages aws-adfs \
-        && apk del krb5-dev build-base python3-dev; \
+        && apk del krb5-dev build-base; \
     fi
 
 # Configure Apache (httpd.conf adjustments)

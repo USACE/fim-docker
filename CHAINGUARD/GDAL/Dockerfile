@@ -50,7 +50,7 @@ ENV \
     ORACLE_HOME=/usr/lib/instantclient
 
 # Install dependencies for building PROJ and GDAL via apk
-RUN apk update && apk add --no-cache \
+RUN apk update && apk upgrade && apk add --no-cache \
     wget \
     curl \
     unzip \

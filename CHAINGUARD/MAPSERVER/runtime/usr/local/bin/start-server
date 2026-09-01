@@ -23,6 +23,12 @@ MAP_DEPLOY_ENV="${MAP_DEPLOY_ENV:-${MAP_ENV:-${FIM_ENV:-dev}}}"
 MAP_RENDERED_BASE="${MAP_RENDERED_BASE:-${WORKSPACE_ROOT}/map_testing/rendered}"
 USE_RENDERED_MAPS="${USE_RENDERED_MAPS:-1}"
 
+# Prefer the Wolfi bundled CLI path when present; fallback to PATH lookup.
+AWS_BIN="${AWS_BIN:-/usr/lib/aws-cli/aws}"
+if [ ! -x "${AWS_BIN}" ]; then
+  AWS_BIN="aws"
+fi
+
 # Create the local directory if it doesn't exist.
 mkdir -p "${LOCAL_DIR}"
 
@@ -47,7 +53,7 @@ else
   if [ -n "${AWS_S3_BUCKET:-}" ] && [ -n "${AWS_DIR:-}" ]; then
     # Download the folder from S3.
     echo "Downloading ${S3_BUCKET}/${S3_FOLDER} to ${LOCAL_DIR}"
-    aws s3 sync "${S3_BUCKET}/${S3_FOLDER}" "${LOCAL_DIR}" "${AWS_PROFILE_ARG[@]}" 
+    "${AWS_BIN}" s3 sync "${S3_BUCKET}/${S3_FOLDER}" "${LOCAL_DIR}" "${AWS_PROFILE_ARG[@]}" 
   else
     echo "AWS_S3_BUCKET or AWS_DIR not set; skipping AWS sync"
   fi
