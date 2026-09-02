@@ -107,7 +107,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-gov-west-1
           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
           output-credentials: true
 
