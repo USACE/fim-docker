@@ -75,7 +75,7 @@ jobs:
           case "$TARGET_ENVIRONMENT" in
             DEV)
               echo 'AWS_ACCOUNT_ID=038611608639' >> "$GITHUB_ENV"
-              echo 'AWS_REGION=us-east-1' >> "$GITHUB_ENV"
+              echo 'AWS_REGION=us-gov-west-1' >> "$GITHUB_ENV"
               echo 'ECR_IMAGE_TAG=dev' >> "$GITHUB_ENV"
               ;;
             TEST)
