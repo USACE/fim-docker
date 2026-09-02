@@ -76,17 +76,17 @@ jobs:
             DEV)
               echo "ROLE_TO_ASSUME=arn:aws-us-gov:iam::718787032875:role/github-actions-ecr-fim-mapserver" >> $GITHUB_ENV
               echo "ECR_REPOSITORY=fim-mapserver" >> $GITHUB_ENV
-              echo "IMAGE_TAG=dev" >> $GITHUB_ENV
+              echo "ECR_IMAGE_TAG=dev" >> $GITHUB_ENV
               ;;
             TEST)
               echo "ROLE_TO_ASSUME=arn:aws-us-gov:iam::276847049069:role/github-actions-ecr-fim-mapserver" >> $GITHUB_ENV
               echo "ECR_REPOSITORY=fim-mapserver" >> $GITHUB_ENV
-              echo "IMAGE_TAG=test" >> $GITHUB_ENV
+              echo "ECR_IMAGE_TAG=test" >> $GITHUB_ENV
               ;;
             PROD)
               echo "ROLE_TO_ASSUME=arn:aws-us-gov:iam::648157167324:role/github-actions-ecr-fim-mapserver" >> $GITHUB_ENV
               echo "ECR_REPOSITORY=fim-mapserver" >> $GITHUB_ENV
-              echo "IMAGE_TAG=prod" >> $GITHUB_ENV
+              echo "ECR_IMAGE_TAG=prod" >> $GITHUB_ENV
               ;;
             *)
               echo "Unsupported environment: $TARGET_ENVIRONMENT" >&2
