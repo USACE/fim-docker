@@ -2,6 +2,7 @@
 ARG platform=linux/amd64
 FROM --platform=${platform} cgr.dev/chainguard/wolfi-base AS builder
 
+USER root
 # Toggle selected external integrations at build time (ON/OFF)
 ARG ENABLE_OCI=ON
 ARG ENABLE_TILEDB=ON
@@ -61,8 +62,8 @@ RUN apk update && apk upgrade && apk add --no-cache \
     pkgconf \
     ninja \
     build-base \
-    sqlite \
-    sqlite-dev \
+    sqlite=3.53.3-r1 \
+    sqlite-dev=3.53.3-r1 \
     linux-headers \
     libarchive-dev \
     curl-dev \
