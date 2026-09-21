@@ -79,6 +79,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Chainguard
+        run: |
+            echo ${{ secrets.CGR_PASSWORD }} | docker login cgr.dev \
+            --username ${{ secrets.CGR_USERNAME }} \
+            --password-stdin
 
       - name: Extract Docker metadata
         id: meta
