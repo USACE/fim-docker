@@ -1,6 +1,8 @@
     # Start from Chainguard Wolfi as the base image
 ARG platform=linux/amd64
-FROM --platform=${platform} cgr.dev/chainguard/wolfi-base AS builder
+ARG WOLFI_IMAGE=cgr.dev/usace-cwbi/chainguard-base-fips:20230214
+
+FROM --platform=${platform} ${WOLFI_IMAGE} AS builder
 
 USER root
 # Toggle selected external integrations at build time (ON/OFF)
@@ -51,7 +53,7 @@ ENV \
     ORACLE_HOME=/usr/lib/instantclient
 
 # Install dependencies for building PROJ and GDAL via apk
-RUN apk update && apk upgrade && apk add --no-cache \
+RUN apk add --no-cache \
     wget \
     curl \
     unzip \
@@ -102,7 +104,6 @@ RUN apk update && apk upgrade && apk add --no-cache \
 RUN if [ -f /usr/lib64/liblz4.a ] && [ ! -e /usr/lib/liblz4.a ]; then \
         ln -s /usr/lib64/liblz4.a /usr/lib/liblz4.a; \
     fi
-
 
 RUN mkdir -p /buildtmp /build_thirdparty/usr/lib
 
@@ -820,12 +821,12 @@ RUN for root in /build_thirdparty/usr /build_proj/usr /build_gdal/usr; do \
 # ==============================================================================
 # Final Runtime Stage
 # ==============================================================================
-FROM --platform=${platform} cgr.dev/chainguard/wolfi-base AS runtime
+FROM --platform=${platform} ${WOLFI_IMAGE} AS runtime
 
 ARG ENABLE_OCI=ON
 
 # Install only the runtime dependencies (no -dev packages) required by GDAL/PROJ
-RUN apk update && apk add --no-cache \
+RUN apk add --no-cache \
     libstdc++ \
     sqlite \
     curl \
