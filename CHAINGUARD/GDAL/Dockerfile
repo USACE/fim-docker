@@ -2,6 +2,52 @@
 ARG platform=linux/amd64
 ARG WOLFI_IMAGE=cgr.dev/usace-cwbi/chainguard-base-fips:20230214
 
+ARG BZIP2_DEV_VERSION=1.0.8-r24
+ARG BZIP2_VERSION=1.0.8-r24
+ARG CURL_DEV_VERSION=8.22.0-r2
+ARG CURL_VERSION=8.22.0-r2
+ARG EXPAT_DEV_VERSION=2.8.4-r0
+ARG EXPAT_VERSION=2.8.4-r0
+ARG GLIB_DEV_VERSION=2.90.0-r0
+ARG GLIB_VERSION=2.90.0-r0
+ARG GMP_DEV_VERSION=6.3.0-r10
+ARG GMP_VERSION=6.3.0-r10
+ARG ICU_DEV_VERSION=78.3-r3
+ARG ICU_VERSION=78.3-r3
+ARG LIBAIO_DEV_VERSION=0.3.113-r8
+ARG LIBAIO_VERSION=0.3.113-r8
+ARG LIBARCHIVE_DEV_VERSION=3.8.9-r1
+ARG LIBGOMP_VERSION=16.2.0-r1
+ARG LIBJPEG_TURBO_DEV_VERSION=3.2.0-r4
+ARG LIBJPEG_TURBO_VERSION=3.2.0-r4
+ARG LIBLZ4_VERSION=1.10.0-r10
+ARG LIBPNG_DEV_VERSION=1.6.58-r3
+ARG LIBPNG_VERSION=1.6.58-r3
+ARG LIBSTDCPP_VERSION=16.2.0-r1
+ARG LIBTHRIFT_VERSION=0.24.0-r1
+ARG LIBTOOL_VERSION=2.5.4-r4
+ARG LIBXML2_DEV_VERSION=2.15.4-r0
+ARG LIBXML2_VERSION=2.15.4-r0
+ARG LZ4_DEV_VERSION=1.10.0-r10
+ARG LZ4_STATIC_VERSION=1.10.0-r10
+ARG LZ4_VERSION=1.10.0-r10
+ARG MPFR_DEV_VERSION=4.2.2-r3
+ARG MPFR_VERSION=4.2.2-r3
+ARG OPENSSL_DEV_VERSION=3.6.4-r7
+ARG OPENSSL_VERSION=3.6.4-r7
+ARG PCRE2_DEV_VERSION=10.48-r0
+ARG PCRE2_VERSION=10.48-r0
+ARG SQLITE_DEV_VERSION=3.53.4-r2
+ARG SQLITE_VERSION=3.53.4-r2
+ARG THRIFT_DEV_VERSION=0.24.0-r1
+ARG TIFF_DEV_VERSION=4.7.2-r2
+ARG TIFF_VERSION=4.7.2-r2
+ARG TZDATA_VERSION=2026d-r0
+ARG XZ_DEV_VERSION=5.8.4-r0
+ARG XZ_VERSION=5.8.4-r0
+ARG ZLIB_DEV_VERSION=1.3.2.1_rc20260601-r0
+ARG ZLIB_VERSION=1.3.2.1_rc20260601-r0
+
 FROM --platform=${platform} ${WOLFI_IMAGE} AS builder
 
 USER root
@@ -14,6 +60,53 @@ ARG ENABLE_POSTGRESQL=ON
 ARG ENABLE_ARROW=ON
 ARG ENABLE_HDF5=ON
 ARG ENABLE_GEOS=ON
+
+# Package Versions for easy CVE tracking and updates
+ARG BZIP2_DEV_VERSION
+ARG BZIP2_VERSION
+ARG CURL_DEV_VERSION
+ARG CURL_VERSION
+ARG EXPAT_VERSION
+ARG EXPAT_DEV_VERSION
+ARG GLIB_DEV_VERSION
+ARG GLIB_VERSION
+ARG GMP_DEV_VERSION
+ARG GMP_VERSION
+ARG ICU_DEV_VERSION
+ARG ICU_VERSION
+ARG LIBAIO_DEV_VERSION
+ARG LIBAIO_VERSION
+ARG LIBARCHIVE_DEV_VERSION
+ARG LIBGOMP_VERSION
+ARG LIBJPEG_TURBO_DEV_VERSION
+ARG LIBJPEG_TURBO_VERSION
+ARG LIBLZ4_VERSION
+ARG LIBPNG_DEV_VERSION
+ARG LIBPNG_VERSION
+ARG LIBSTDCPP_VERSION
+ARG LIBTHRIFT_VERSION
+ARG LIBTOOL_VERSION
+ARG LIBXML2_DEV_VERSION
+ARG LIBXML2_VERSION
+ARG LZ4_DEV_VERSION
+ARG LZ4_STATIC_VERSION
+ARG LZ4_VERSION
+ARG MPFR_DEV_VERSION
+ARG MPFR_VERSION
+ARG OPENSSL_DEV_VERSION
+ARG OPENSSL_VERSION
+ARG PCRE2_DEV_VERSION
+ARG PCRE2_VERSION
+ARG SQLITE_DEV_VERSION
+ARG SQLITE_VERSION
+ARG THRIFT_DEV_VERSION
+ARG TIFF_DEV_VERSION
+ARG TIFF_VERSION
+ARG TZDATA_VERSION
+ARG XZ_DEV_VERSION
+ARG XZ_VERSION
+ARG ZLIB_DEV_VERSION
+ARG ZLIB_VERSION
 
 # LATEST GDAL is 3.9.2 but postgis won't build
 ENV \
@@ -41,7 +134,7 @@ ENV \
     TILEDB_VERSION=2.29.2 \
     URIPARSER_VERSION=1.0.2 \
     WEBP_VERSION=1.6.0 \
-    ZLIB_VERSION=1.3.2 \
+    ZLIB_VERSION=1.3.3 \
     ZSTD_VERSION=1.5.7
 
 # Paths to things
@@ -62,39 +155,39 @@ RUN apk add --no-cache \
     autoconf \
     automake \
     pkgconf \
-    ninja \
+    ninja-build \
     build-base \
-    sqlite=3.53.3-r1 \
-    sqlite-dev=3.53.3-r1 \
+    sqlite=${SQLITE_VERSION} \
+    sqlite-dev=${SQLITE_DEV_VERSION} \
     linux-headers \
     libarchive-dev \
-    curl-dev \
-    tiff-dev \
-    zlib-dev \
-    lz4-dev \
-    lz4-static \
-    libjpeg-turbo-dev \
-    libpng-dev \
-    libxml2-dev \
-    expat-dev \
+    curl-dev=${CURL_DEV_VERSION} \
+    tiff-dev=${TIFF_DEV_VERSION} \
+    zlib-dev=${ZLIB_DEV_VERSION} \
+    lz4-dev=${LZ4_DEV_VERSION} \
+    lz4-static=${LZ4_STATIC_VERSION} \
+    libjpeg-turbo-dev=${LIBJPEG_TURBO_DEV_VERSION} \
+    libpng-dev=${LIBPNG_DEV_VERSION} \
+    libxml2-dev=${LIBXML2_DEV_VERSION} \
+    expat-dev=${EXPAT_DEV_VERSION} \
     python3-dev \
     py3-setuptools \
     py3-numpy \
     pcre-dev \
-    pcre2-dev \
-    libaio-dev \
+    pcre2-dev=${PCRE2_DEV_VERSION} \
+    libaio-dev=${LIBAIO_DEV_VERSION} \
     cmake \
     git \
     patch \
     diffutils \
     file \
-    glib-dev \
-    bzip2-dev \
-    icu-dev \
-    gmp-dev \
-    mpfr-dev \
-    xz-dev \
-    openssl-dev \
+    glib-dev=${GLIB_DEV_VERSION} \
+    bzip2-dev=${BZIP2_DEV_VERSION} \
+    icu-dev=${ICU_DEV_VERSION} \
+    gmp-dev=${GMP_DEV_VERSION} \
+    mpfr-dev=${MPFR_DEV_VERSION} \
+    xz-dev=${XZ_DEV_VERSION} \
+    openssl-dev=${OPENSSL_DEV_VERSION} \
     swig \
     thrift-dev \
     utf8proc-dev \
@@ -824,35 +917,59 @@ RUN for root in /build_thirdparty/usr /build_proj/usr /build_gdal/usr; do \
 FROM --platform=${platform} ${WOLFI_IMAGE} AS runtime
 
 ARG ENABLE_OCI=ON
+ARG BZIP2_VERSION
+ARG CURL_VERSION
+ARG EXPAT_VERSION
+ARG GLIB_VERSION
+ARG GMP_VERSION
+ARG ICU_VERSION
+ARG LIBAIO_VERSION
+ARG LIBGOMP_VERSION
+ARG LIBJPEG_TURBO_VERSION
+ARG LIBLZ4_VERSION
+ARG LIBPNG_VERSION
+ARG LIBSTDCPP_VERSION
+ARG LIBTHRIFT_VERSION
+ARG LIBXML2_VERSION
+ARG LZ4_VERSION
+ARG MPFR_VERSION
+ARG OPENSSL_VERSION
+ARG PCRE2_VERSION
+ARG SQLITE_DEV_VERSION
+ARG SQLITE_VERSION
+ARG TIFF_VERSION
+ARG TZDATA_VERSION
+ARG XZ_VERSION
+ARG ZLIB_VERSION
 
 # Install only the runtime dependencies (no -dev packages) required by GDAL/PROJ
 RUN apk add --no-cache \
-    libstdc++ \
-    sqlite \
-    curl \
-    tiff \
-    zlib \
-    lz4 \
-    liblz4-1 \
-    libjpeg-turbo \
-    libpng \
-    libxml2 \
-    libxml2-16 \
-    expat \
+    libstdc++=${LIBSTDCPP_VERSION} \
+    sqlite=${SQLITE_VERSION} \
+    curl=${CURL_VERSION} \
+    tiff=${TIFF_VERSION} \
+    zlib=${ZLIB_VERSION} \
+    lz4=${LZ4_VERSION} \
+    liblz4-1=${LIBLZ4_VERSION} \
+    libjpeg-turbo=${LIBJPEG_TURBO_VERSION} \
+    libpng=${LIBPNG_VERSION} \
+    libxml2=${LIBXML2_VERSION} \
+    libxml2-16=${LIBXML2_VERSION} \
+    expat=${EXPAT_VERSION} \
     python3 \
     py3-numpy \
-    pcre2 \
-    libaio \
-    glib \
-    libgomp \
-    gmp \
-    mpfr \
-    icu \
-    libthrift \
-    openssl \
-    xz \
-    bzip2 \
-    tzdata
+    pcre2=${PCRE2_VERSION} \
+    libaio=${LIBAIO_VERSION} \
+    glib=${GLIB_VERSION} \
+    libgomp=${LIBGOMP_VERSION} \
+    gmp=${GMP_VERSION} \
+    mpfr=${MPFR_VERSION} \
+    icu=${ICU_VERSION} \
+    libthrift=${LIBTHRIFT_VERSION} \
+    openssl=${OPENSSL_VERSION} \
+    xz=${XZ_VERSION} \
+    bzip2=${BZIP2_VERSION} \
+    tzdata=${TZDATA_VERSION}
 
 # Copy all compiled artifacts from the builder stage
 COPY --from=builder /build_thirdparty/usr /usr
