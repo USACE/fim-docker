@@ -29,7 +29,6 @@ RUN apk update && apk add \
     libarchive-tools \
     libaio-dev \
     fribidi-dev \
-    librsvg-dev \
     postgresql-18-dev \
     libpng-dev \
     libjpeg-turbo-dev \
@@ -135,7 +134,7 @@ RUN if [ "${WITH_ORACLE}" = "ON" ]; then export ORACLE_HOME=/usr/local/lib; fi; 
         -DWITH_XMLMAPFILE=1 \
         -DWITH_PYTHON=1 \
         -DWITH_CAIRO=1 \
-        -DWITH_RSVG=1 \
+        -DWITH_RSVG=0 \
         -DUSE_PROJ=1 \
         -DUSE_WFS_SVR=1 \
         -DUSE_OGCAPI_SVR=1 \
@@ -176,7 +175,6 @@ RUN apk update && apk add \
     apache2-config-compat \
     apache2-utils \
     fribidi \
-    librsvg \
     libpng \
     giflib \
     libxslt \
