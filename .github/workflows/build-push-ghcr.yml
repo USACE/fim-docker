@@ -31,7 +31,7 @@ jobs:
             context: CHAINGUARD/GDAL
             dockerfile: Dockerfile
             build_args: ""
-            extra_tag: ""
+            extra_tag: "full"
           - image: chainguard-gdal
             context: CHAINGUARD/GDAL
             dockerfile: Dockerfile
