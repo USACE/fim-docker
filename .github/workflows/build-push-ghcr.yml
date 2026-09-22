@@ -163,7 +163,7 @@ jobs:
 
       - name: Upload Trivy Reports to GitHub Release
         uses: softprops/action-gh-release@v1
-        if: (github.event_name == 'push' || github.event_name == 'schedule') && always()
+        if: (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && always()
         env:
           IMAGE_NAME: ${{ matrix.image }}
           IMAGE_TAG: ${{ github.sha }}
