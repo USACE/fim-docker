@@ -8,6 +8,8 @@ FROM gdal AS builder
 
 SHELL ["/bin/sh", "-eux", "-c"]
 
+ARG ENABLE_OCI=ON
+
 # Set Oracle and Library System Variables
 ENV ORACLE_VERSION=21.20.0.0.0 \
     ORACLE_BASE=/usr/local/lib \
@@ -175,6 +177,8 @@ RUN apk update && apk add \
     apache2-config-compat \
     apache2-utils \
     fribidi \
+    freetype \
+    harfbuzz \
     libpng \
     giflib \
     libxslt \
