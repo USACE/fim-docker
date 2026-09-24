@@ -193,7 +193,8 @@ RUN apk update && apk add \
     && mkdir --mode=0777 --parent ${APACHE_RUN_DIR} ${APACHE_LOCK_DIR} /etc/mapserver
 
 # Prefer the bundled AWS CLI v2 launcher and expose a stable /usr/bin/aws path.
-RUN ln -sf /usr/lib/aws-cli/aws /usr/bin/aws
+RUN ln -sf /opt/chainguard/aws-cli-2/bin/aws /usr/bin/aws \
+    && aws --version
 
 # Keep boto3 aligned to the runtime Python minor version (e.g. py3.13-boto3).
 RUN PY_MM="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')" \
