@@ -46,6 +46,7 @@ RUN apk update && apk add \
     protobuf-c-dev \
     protobuf-c-compiler \
     harfbuzz-dev \
+    && apk add --no-cache --upgrade libpng \
     && ln -sf /usr/lib/ninja-build/bin/ninja /usr/bin/ninja
 
 # Provide Python development headers/config for CMake without replacing base Python runtime.
