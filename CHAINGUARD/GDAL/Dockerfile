@@ -101,7 +101,6 @@ RUN apk add --no-cache \
     bison \
     flex \
     zstd-dev \
-    libwebp-dev \
     openjpeg-dev \
     zstd-static
 
@@ -874,7 +873,6 @@ RUN apk add --no-cache \
     bzip2  \
     tzdata \
     libzstd1 \
-    libwebp \
     openjpeg
 
 # Copy all compiled artifacts from the builder stage
