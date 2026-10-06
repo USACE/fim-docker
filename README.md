@@ -1,9 +1,143 @@
+Only the Chainguard deployment will be updated
+
+
 Chainguard deployment completed as well as UBI 
 
 Update-all-ecr and auto builds still need to be implemented
 
-Supported formats 
+
+## `build-gdal.sh`
+
+### 1. Select a cache reference
+
+Keep the cache separate from the final runtime image:
+
+- Final image: `ghcr.io/usace/chainguard-gdal:3.13.3`
+- Cache image: `ghcr.io/usace/chainguard-gdal:buildcache`
+
+Do not use the same registry reference for both the runtime image and the cache. Docker recommends a distinct cache location. Some registries automatically create a repository on the first successful push; others require an administrator to create it first.
+
+### 2. Authenticate to the registry
+
+Use an approved credential method, preferably a scoped token or CI service credential rather than embedding credentials in scripts.
+
+```sh
+docker login registry.example.mil
 ```
+
+Verify that you are authenticated:
+
+```sh
+docker info
+```
+
+### 3. Ensure you have a Buildx builder that supports registry cache
+
+Check existing builders:
+
+```sh
+docker buildx ls
+```
+
+Create and select a dedicated BuildKit builder if needed:
+
+```sh
+docker buildx create \
+  --name gdal-builder \
+  --driver docker-container \
+  --use
+
+docker buildx inspect --bootstrap
+```
+
+The `docker-container` Buildx driver supports the registry cache backend. The default Docker driver supports it only when the containerd image store is enabled. See [Docker's registry cache documentation](https://docs.docker.com/build/cache/backends/registry/).
+
+### 4. Create or populate the cache with the first build
+
+There is no separate “create cache” command. The first build exports cache content to the registry reference and effectively creates it.
+
+```sh
+docker buildx build \
+  --builder gdal-builder \
+  --platform linux/amd64 \
+  --build-arg BUILD_JOBS=8 \
+  --cache-from type=registry,ref=ghcr.io/usace/chainguard-gdal:buildcache \
+  --cache-to type=registry,ref=ghcr.io/usace/chainguard-gdal:buildcache,mode=max \
+  --tag ghcr.io/usace/chainguard-gdal:3.13.3 \
+  --push \
+  .
+```
+
+On the first execution, the `--cache-from` reference will not exist. BuildKit continues the build, then publishes the cache through `--cache-to`. `mode=max` retains intermediate-stage layers, which is generally appropriate for a multi-stage GDAL build. See [Docker's registry cache documentation](https://docs.docker.com/build/cache/backends/registry/).
+
+### 5. Configure the script
+
+Run `build-gdal.sh` with registry caching enabled:
+
+```sh
+DOCKERFILE=Dockerfile-v2 \
+CACHE_MODE=registry \
+CACHE_REF=ghcr.io/usace/chainguard-gdal:buildcache \
+IMAGE=ghcr.io/usace/chainguard-gdal:3.13.3 \
+PUSH=true \
+LOAD=false \
+BUILD_JOBS=8 \
+./build-gdal.sh
+```
+
+Subsequent builds import from and update the same cache reference.
+
+### Recommended cache naming
+
+Use a dedicated cache tag per stable build stream:
+
+```text
+ghcr.io/usace/chainguard-gdal:buildcache-main
+ghcr.io/usace/chainguard-gdal:buildcache-release
+ghcr.io/usace/chainguard-gdal:buildcache-dev
+```
+
+For a branch-based CI workflow, export to the branch cache but import from both the branch and main caches:
+
+```sh
+docker buildx build \
+  --platform linux/amd64 \
+  --cache-from type=registry,ref=ghcr.io/usace/chainguard-gdal:buildcache-main \
+  --cache-from type=registry,ref=ghcr.io/usace/chainguard-gdal:buildcache-feature-x \
+  --cache-to type=registry,ref=ghcr.io/usace/chainguard-gdal:buildcache-feature-x,mode=max \
+  --tag ghcr.io/usace/chainguard-gdal:feature-x \
+  --push \
+  .
+```
+
+BuildKit supports importing multiple caches. Use distinct export references for concurrent or separate build streams so one build does not overwrite another cache’s metadata.
+
+### Full build example
+
+```sh
+CACHE_MODE=registry \
+CACHE_REF=ghcr.io/usace/chainguard-gdal:buildcache \
+IMAGE=ghcr.io/usace/chainguard-gdal:3.13.3 \
+PUSH=true \
+LOAD=false \
+BUILD_JOBS=8 \
+./build-gdal.sh
+```
+
+```sh
+DOCKERFILE=Dockerfile-v2 \
+CACHE_MODE=registry \
+CACHE_REF=ghcr.io/usace/chainguard-gdal:buildcache-amd64 \
+IMAGE=ghcr.io/usace/chainguard-gdal:dev \
+PUSH=true \
+LOAD=false \
+BUILD_JOBS=4 \
+./build-gdal.sh
+```
+
+## Supported formats
+
+```text
 gdalinfo --formats
 Supported Formats: (ro:read-only, rw:read-write, +:write from scratch, u:update, v:virtual-I/O s:subdatasets)
   DERIVED -raster- (ro): Derived datasets using VRT pixel functions
