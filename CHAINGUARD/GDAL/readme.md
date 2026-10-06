@@ -104,3 +104,7 @@ docker build --no-cache --platform linux/amd64 -f CHAINGUARD/GDAL/Dockerfile -t 
 ```
 
 - If Oracle download fails, set ENABLE_OCI=OFF and rebuild.
+
+
+docker build --platform linux/amd64 -f Dockerfile \
+	-t gdal-chainguard:full .
