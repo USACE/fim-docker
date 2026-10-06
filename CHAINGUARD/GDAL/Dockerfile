@@ -587,8 +587,12 @@ RUN if [ "${ENABLE_TILEDB}" = "ON" ]; then \
 # Build real bison/flex
 RUN cd ${BUILD} && \
     mkdir bison-src && \
-    wget -qO- https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz \
-    | tar xz -C bison-src --strip-components=1 && \
+    curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+    --http1.1 --connect-timeout 20 --max-time 600 \
+    https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz \
+    -o /tmp/bison-3.8.2.tar.gz && \
+    tar xzf /tmp/bison-3.8.2.tar.gz -C bison-src --strip-components=1 && \
+    rm -f /tmp/bison-3.8.2.tar.gz && \
     cd bison-src && \
     ./configure --prefix=/usr && \
     make -j$(nproc) MAKEINFO=true && \
@@ -596,8 +600,12 @@ RUN cd ${BUILD} && \
     cd ${BUILD} && \
     rm -rf bison-src && \
     mkdir flex-src && \
-    wget -qO- https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz \
-    | tar xz -C flex-src --strip-components=1 && \
+    curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+    --http1.1 --connect-timeout 20 --max-time 600 \
+    https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz \
+    -o /tmp/flex-2.6.4.tar.gz && \
+    tar xzf /tmp/flex-2.6.4.tar.gz -C flex-src --strip-components=1 && \
+    rm -f /tmp/flex-2.6.4.tar.gz && \
     cd flex-src && \
     ./configure --prefix=/usr && \
     make -j$(nproc) && \
