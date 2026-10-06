@@ -98,6 +98,11 @@ RUN apk add --no-cache \
     thrift-dev \
     utf8proc-dev \
     xsimd-dev \
+    bison \
+    flex \
+    zstd-dev \
+    libwebp-dev \
+    openjpeg-dev \
     zstd-static
 
 RUN if [ -f /usr/lib64/liblz4.a ] && [ ! -e /usr/lib/liblz4.a ]; then \
@@ -124,19 +129,19 @@ RUN cd ${BUILD} && \
     rm -rf json-c
 
 # ZSTD
-RUN cd ${BUILD} && \
-    mkdir zstd && \
-    wget -qO- https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz | tar -xvz -C zstd --strip-components=1 && \
-    cd zstd/build/cmake  \
-    && cmake . -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    && make -j$(nproc) && \
-    make install && \
-    make DESTDIR="/build_thirdparty" install && \
-    mkdir -p /build_thirdparty/usr/lib && \
-    cp -P /usr/lib/libzstd*.so* /build_thirdparty/usr/lib && \
-    cd ${BUILD} && \
-    rm -rf zstd
+# RUN cd ${BUILD} && \
+#     mkdir zstd && \
+#     wget -qO- https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz | tar -xvz -C zstd --strip-components=1 && \
+#     cd zstd/build/cmake  \
+#     && cmake . -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release \
+#     -DCMAKE_INSTALL_PREFIX=/usr \
+#     && make -j$(nproc) && \
+#     make install && \
+#     make DESTDIR="/build_thirdparty" install && \
+#     mkdir -p /build_thirdparty/usr/lib && \
+#     cp -P /usr/lib/libzstd*.so* /build_thirdparty/usr/lib && \
+#     cd ${BUILD} && \
+#     rm -rf zstd
 
 # DEFLATE
 RUN cd ${BUILD} && \
@@ -347,19 +352,19 @@ RUN if [ "${ENABLE_OCI}" = "ON" ]; then \
     fi
 
 # OpenJPEG
-RUN cd ${BUILD} && \
-    mkdir openjpeg && \
-    wget -q https://github.com/uclouvain/openjpeg/archive/v${OPENJPEG_VERSION}.tar.gz -O openjpeg.tar.gz && \
-    tar -xvzf openjpeg.tar.gz  -C openjpeg --strip-components=1 && \
-    cd openjpeg && \
-    cmake . -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-    && make -j$(nproc)  && \
-    make install && \
-    make install DESTDIR="/build_thirdparty" \
-    && mkdir -p /build_thirdparty/usr/lib \
-    && cd ${BUILD} \
-    && rm -rf openjpeg
+# RUN cd ${BUILD} && \
+#     mkdir openjpeg && \
+#     wget -q https://github.com/uclouvain/openjpeg/archive/v${OPENJPEG_VERSION}.tar.gz -O openjpeg.tar.gz && \
+#     tar -xvzf openjpeg.tar.gz  -C openjpeg --strip-components=1 && \
+#     cd openjpeg && \
+#     cmake . -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
+#     -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+#     && make -j$(nproc)  && \
+#     make install && \
+#     make install DESTDIR="/build_thirdparty" \
+#     && mkdir -p /build_thirdparty/usr/lib \
+#     && cd ${BUILD} \
+#     && rm -rf openjpeg
 
 # Build and install PROJ
 ARG PROJ_DATUMGRID_LATEST_LAST_MODIFIED
@@ -434,26 +439,26 @@ RUN if [ "${ENABLE_GEOS}" = "ON" ]; then \
     fi
 
 # WEbP
-RUN cd ${BUILD} && \
-    mkdir webp && \
-    wget -q https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz -O - \
-    | tar xz -C webp --strip-components=1 && \
-    cd webp  && \
-    mkdir build && \
-    cd build && \
-    cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-    -DCMAKE_PREFIX_PATH=${PREFIX} \
-    -DBUILD_SHARED_LIBS=ON \
-    && make -j$(nproc) && \
-    make install && \
-    make DESTDIR="/build_thirdparty" install && \
-    mkdir -p /build_thirdparty/usr/lib && \
-    cp -P ${PREFIX}/lib/libwebp*.so* /build_thirdparty/usr/lib 2>/dev/null || true && \
-    cp -P ${PREFIX}/lib/libsharpyuv*.so* /build_thirdparty/usr/lib 2>/dev/null || true && \
-    cd ${BUILD} && \
-    rm -rf webp
+# RUN cd ${BUILD} && \
+#     mkdir webp && \
+#     wget -q https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz -O - \
+#     | tar xz -C webp --strip-components=1 && \
+#     cd webp  && \
+#     mkdir build && \
+#     cd build && \
+#     cmake .. \
+#     -DCMAKE_BUILD_TYPE=Release \
+#     -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+#     -DCMAKE_PREFIX_PATH=${PREFIX} \
+#     -DBUILD_SHARED_LIBS=ON \
+#     && make -j$(nproc) && \
+#     make install && \
+#     make DESTDIR="/build_thirdparty" install && \
+#     mkdir -p /build_thirdparty/usr/lib && \
+#     cp -P ${PREFIX}/lib/libwebp*.so* /build_thirdparty/usr/lib 2>/dev/null || true && \
+#     cp -P ${PREFIX}/lib/libsharpyuv*.so* /build_thirdparty/usr/lib 2>/dev/null || true && \
+#     cd ${BUILD} && \
+#     rm -rf webp
 
 # LibMAGIC
 RUN cd ${BUILD} && \
@@ -585,37 +590,37 @@ RUN if [ "${ENABLE_TILEDB}" = "ON" ]; then \
     fi
 
 # Build real bison/flex
-RUN cd ${BUILD} && \
-    mkdir bison-src && \
-    (curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
-    --http1.1 --connect-timeout 20 --max-time 600 \
-    https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz \
-    -o /tmp/bison-3.8.2.tar.gz || \
-    curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
-    --http1.1 --connect-timeout 20 --max-time 600 \
-    https://mirrors.kernel.org/gnu/bison/bison-3.8.2.tar.gz \
-    -o /tmp/bison-3.8.2.tar.gz) && \
-    tar xzf /tmp/bison-3.8.2.tar.gz -C bison-src --strip-components=1 && \
-    rm -f /tmp/bison-3.8.2.tar.gz && \
-    cd bison-src && \
-    ./configure --prefix=/usr && \
-    make -j$(nproc) MAKEINFO=true && \
-    make install && \
-    cd ${BUILD} && \
-    rm -rf bison-src && \
-    mkdir flex-src && \
-    curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
-    --http1.1 --connect-timeout 20 --max-time 600 \
-    https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz \
-    -o /tmp/flex-2.6.4.tar.gz && \
-    tar xzf /tmp/flex-2.6.4.tar.gz -C flex-src --strip-components=1 && \
-    rm -f /tmp/flex-2.6.4.tar.gz && \
-    cd flex-src && \
-    ./configure --prefix=/usr && \
-    make -j$(nproc) && \
-    make install && \
-    cd ${BUILD} && \
-    rm -rf flex-src
+# RUN cd ${BUILD} && \
+#     mkdir bison-src && \
+#     (curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+#     --http1.1 --connect-timeout 20 --max-time 600 \
+#     https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz \
+#     -o /tmp/bison-3.8.2.tar.gz || \
+#     curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+#     --http1.1 --connect-timeout 20 --max-time 600 \
+#     https://mirrors.kernel.org/gnu/bison/bison-3.8.2.tar.gz \
+#     -o /tmp/bison-3.8.2.tar.gz) && \
+#     tar xzf /tmp/bison-3.8.2.tar.gz -C bison-src --strip-components=1 && \
+#     rm -f /tmp/bison-3.8.2.tar.gz && \
+#     cd bison-src && \
+#     ./configure --prefix=/usr && \
+#     make -j$(nproc) MAKEINFO=true && \
+#     make install && \
+#     cd ${BUILD} && \
+#     rm -rf bison-src && \
+#     mkdir flex-src && \
+#     curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+#     --http1.1 --connect-timeout 20 --max-time 600 \
+#     https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz \
+#     -o /tmp/flex-2.6.4.tar.gz && \
+#     tar xzf /tmp/flex-2.6.4.tar.gz -C flex-src --strip-components=1 && \
+#     rm -f /tmp/flex-2.6.4.tar.gz && \
+#     cd flex-src && \
+#     ./configure --prefix=/usr && \
+#     make -j$(nproc) && \
+#     make install && \
+#     cd ${BUILD} && \
+#     rm -rf flex-src
 
 # Create a placeholder FindBin.pm
 RUN mkdir -p /usr/local/share/perl5/5.32 && \
@@ -867,7 +872,10 @@ RUN apk add --no-cache \
     openssl \
     xz  \
     bzip2  \
-    tzdata
+    tzdata \
+    libzstd1 \
+    libwebp \
+    openjpeg
 
 # Copy all compiled artifacts from the builder stage
 COPY --from=builder /build_thirdparty/usr /usr
