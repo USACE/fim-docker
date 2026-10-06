@@ -587,10 +587,14 @@ RUN if [ "${ENABLE_TILEDB}" = "ON" ]; then \
 # Build real bison/flex
 RUN cd ${BUILD} && \
     mkdir bison-src && \
-    curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+    (curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
     --http1.1 --connect-timeout 20 --max-time 600 \
     https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz \
-    -o /tmp/bison-3.8.2.tar.gz && \
+    -o /tmp/bison-3.8.2.tar.gz || \
+    curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+    --http1.1 --connect-timeout 20 --max-time 600 \
+    https://mirrors.kernel.org/gnu/bison/bison-3.8.2.tar.gz \
+    -o /tmp/bison-3.8.2.tar.gz) && \
     tar xzf /tmp/bison-3.8.2.tar.gz -C bison-src --strip-components=1 && \
     rm -f /tmp/bison-3.8.2.tar.gz && \
     cd bison-src && \
