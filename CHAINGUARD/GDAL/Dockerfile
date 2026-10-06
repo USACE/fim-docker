@@ -531,10 +531,9 @@ RUN cd ${BUILD} && \
     rm -rf nlohmann_json
 
 # AWS SDK for C++
-# Its pinned s2n predates OpenSSL 4 support; use the upstream compatibility commit.
+# Its pinned s2n predates OpenSSL 4 support; use the upstream fix and skip the ancestry check.
 RUN cd ${BUILD} && \
     git clone --recurse-submodules --depth 1 -b ${AWSSDK_VERSION} https://github.com/aws/aws-sdk-cpp.git && \
-    git -C aws-sdk-cpp/crt/aws-crt-cpp/crt/s2n fetch --unshallow origin && \
     git -C aws-sdk-cpp/crt/aws-crt-cpp/crt/s2n fetch --depth 1 https://github.com/aws/s2n-tls.git b170000016fb44fa4dfdd86ed0b75bd28241e707 && \
     git -C aws-sdk-cpp/crt/aws-crt-cpp/crt/s2n checkout --detach b170000016fb44fa4dfdd86ed0b75bd28241e707 && \
     cd aws-sdk-cpp && \
@@ -547,6 +546,7 @@ RUN cd ${BUILD} && \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DBUILD_ONLY="s3;sts;identity-management" \
     -DENABLE_TESTING=OFF \
+    -DENFORCE_SUBMODULE_VERSIONS=OFF \
     -DBUILD_SHARED_LIBS=ON \
     -DMINIMIZE_SIZE=ON && \
     make -j$(nproc) && \
