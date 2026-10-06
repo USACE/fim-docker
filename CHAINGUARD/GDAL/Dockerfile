@@ -439,26 +439,26 @@ RUN if [ "${ENABLE_GEOS}" = "ON" ]; then \
     fi
 
 # WEbP
-# RUN cd ${BUILD} && \
-#     mkdir webp && \
-#     wget -q https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz -O - \
-#     | tar xz -C webp --strip-components=1 && \
-#     cd webp  && \
-#     mkdir build && \
-#     cd build && \
-#     cmake .. \
-#     -DCMAKE_BUILD_TYPE=Release \
-#     -DCMAKE_INSTALL_PREFIX=${PREFIX} \
-#     -DCMAKE_PREFIX_PATH=${PREFIX} \
-#     -DBUILD_SHARED_LIBS=ON \
-#     && make -j$(nproc) && \
-#     make install && \
-#     make DESTDIR="/build_thirdparty" install && \
-#     mkdir -p /build_thirdparty/usr/lib && \
-#     cp -P ${PREFIX}/lib/libwebp*.so* /build_thirdparty/usr/lib 2>/dev/null || true && \
-#     cp -P ${PREFIX}/lib/libsharpyuv*.so* /build_thirdparty/usr/lib 2>/dev/null || true && \
-#     cd ${BUILD} && \
-#     rm -rf webp
+RUN cd ${BUILD} && \
+    mkdir webp && \
+    wget -q https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${WEBP_VERSION}.tar.gz -O - \
+    | tar xz -C webp --strip-components=1 && \
+    cd webp  && \
+    mkdir build && \
+    cd build && \
+    cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+    -DCMAKE_PREFIX_PATH=${PREFIX} \
+    -DBUILD_SHARED_LIBS=ON \
+    && make -j$(nproc) && \
+    make install && \
+    make DESTDIR="/build_thirdparty" install && \
+    mkdir -p /build_thirdparty/usr/lib && \
+    cp -P ${PREFIX}/lib/libwebp*.so* /build_thirdparty/usr/lib 2>/dev/null || true && \
+    cp -P ${PREFIX}/lib/libsharpyuv*.so* /build_thirdparty/usr/lib 2>/dev/null || true && \
+    cd ${BUILD} && \
+    rm -rf webp
 
 # LibMAGIC
 RUN cd ${BUILD} && \
