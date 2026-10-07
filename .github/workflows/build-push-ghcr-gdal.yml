@@ -46,7 +46,7 @@ jobs:
           # Full-featured GDAL image, including Oracle Instant Client / OCI support.
           - image: chainguard-gdal
             context: CHAINGUARD/GDAL
-            dockerfile: Dockerfile-v2
+            dockerfile: Dockerfile
             build_args: |
               BUILD_JOBS=8
               ENABLE_OCI=ON
@@ -62,7 +62,7 @@ jobs:
           # Full-featured GDAL image without Oracle Instant Client / OCI support.
           - image: chainguard-gdal-no-oci
             context: CHAINGUARD/GDAL
-            dockerfile: Dockerfile-v2
+            dockerfile: Dockerfile
             build_args: |
               BUILD_JOBS=8
               ENABLE_OCI=OFF
