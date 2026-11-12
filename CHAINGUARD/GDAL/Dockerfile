@@ -383,15 +383,15 @@ RUN set -eux; \
         echo "Skipping Oracle Instant Client build (ENABLE_OCI=${ENABLE_OCI})"; \
     fi
 
-# ==============================================================================
-# PROJ datum grids
-# ==============================================================================
-RUN set -eux; \
-    mkdir -p /build_projgrids/usr/share/proj; \
-    curl -fL -o proj-datumgrid-latest.zip \
-      http://download.osgeo.org/proj/proj-datumgrid-latest.zip; \
-    unzip -q -j -u -o proj-datumgrid-latest.zip -d /build_projgrids/usr/share/proj; \
-    rm -f proj-datumgrid-latest.zip
+# # ==============================================================================
+# # PROJ datum grids
+# # ==============================================================================
+# RUN set -eux; \
+#     mkdir -p /build_projgrids/usr/share/proj; \
+#     curl -fL -o proj-datumgrid-latest.zip \
+#       http://download.osgeo.org/proj/proj-datumgrid-latest.zip; \
+#     unzip -q -j -u -o proj-datumgrid-latest.zip -d /build_projgrids/usr/share/proj; \
+#     rm -f proj-datumgrid-latest.zip
 
 # ==============================================================================
 # PROJ
@@ -410,6 +410,10 @@ RUN --mount=type=cache,target=/root/.cache/ccache,id=gdal-ccache,sharing=locked 
     cmake --build proj/build --parallel "${BUILD_JOBS}"; \
     cmake --install proj/build; \
     DESTDIR=/build_proj cmake --install proj/build; \
+    projsync \
+      --target-dir /build_proj/usr/share/proj \
+      --all; \
+    test -s /build_proj/usr/share/proj/us_noaa_inhpgn.tif; \
     rm -rf proj
 
 # ==============================================================================
