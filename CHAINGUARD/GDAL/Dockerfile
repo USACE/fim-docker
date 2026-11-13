@@ -899,10 +899,10 @@ RUN apk add --no-cache \
 
 COPY --from=builder /build_thirdparty/usr /usr
 COPY --from=builder /build_proj/usr /usr
-COPY --from=builder /build_projgrids/usr/share/proj /usr/share/proj
 COPY --from=builder /build_gdal/usr /usr
 
 ENV PREFIX=/usr \
+    PROJ_DATA=/usr/share/proj \
     PROJ_LIB=/usr/share/proj \
     GDAL_DATA=/usr/share/gdal \
     ORACLE_BASE=/usr/lib/instantclient \

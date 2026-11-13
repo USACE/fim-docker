@@ -26,7 +26,7 @@ PLATFORM="${PLATFORM:-linux/amd64}"
 IMAGE="${IMAGE:-local/gdal-wolfi:3.13.3}"
 
 # Set BUILD_JOBS based on builder memory/CPU capacity.
-BUILD_JOBS="${BUILD_JOBS:-8}"
+BUILD_JOBS="${BUILD_JOBS:-4}"
 
 # Cache modes: local or registry.
 CACHE_MODE="${CACHE_MODE:-local}"

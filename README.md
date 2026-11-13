@@ -120,7 +120,7 @@ CACHE_REF=ghcr.io/usace/chainguard-gdal:buildcache \
 IMAGE=ghcr.io/usace/chainguard-gdal:3.13.3 \
 PUSH=true \
 LOAD=false \
-BUILD_JOBS=8 \
+BUILD_JOBS=2 \
 ./build-gdal.sh
 ```
 
